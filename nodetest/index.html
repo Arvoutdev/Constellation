@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity Web Player | Fusion ZERO</title>
+    <title>Unity Web Player | Fusion Zero</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
   </head>
@@ -20,7 +20,7 @@
       <div id="unity-footer">
         <div id="unity-logo-title-footer"></div>
         <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">Fusion ZERO</div>
+        <div id="unity-build-title">Fusion Zero</div>
       </div>
     </div>
     <script>
@@ -52,15 +52,15 @@
       }
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/fpstest.loader.js";
+      var loaderUrl = buildUrl + "/nodetest.loader.js";
       var config = {
         arguments: [],
-        dataUrl: buildUrl + "/fpstest.data",
-        frameworkUrl: buildUrl + "/fpstest.framework.js",
-        codeUrl: buildUrl + "/fpstest.wasm",
+        dataUrl: buildUrl + "/nodetest.data",
+        frameworkUrl: buildUrl + "/nodetest.framework.js",
+        codeUrl: buildUrl + "/nodetest.wasm",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "agent_zero",
-        productName: "Fusion ZERO",
+        productName: "Fusion Zero",
         productVersion: "1.0",
         showBanner: unityShowBanner,
       };
@@ -81,7 +81,7 @@
       // JS_FileSystem_Sync() behavior, but in future Unity version, this will be
       // expected to change.
 
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      if (true)) {
         // Mobile device style: fill the whole browser client area with the game canvas:
 
         var meta = document.createElement('meta');
