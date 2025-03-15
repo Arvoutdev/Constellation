@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Fusion Zero</title>
-    <link rel="shortcut icon" href="TemplateData/favicon.png">
+    <title>FUSION ZERO | Editor</title>
+    <link rel="shortcut icon" href="TemplateData/icon.png">
     <link rel="stylesheet" href="TemplateData/style.css">
   </head>
   <body>
@@ -24,43 +24,50 @@
       </div>
     </div>
     <script>
-		var f = 0;
-		function delayedFunction()
+	
+	var f = 0;
+
+	function delayedFunction()
+	{
+		var d = "";
+		var pos = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
+		var real = ["F", "U", "S", "I", "O", "N", " ", "Z", "E", "R", "O"]
+		
+		for (var i = 0; i < 11; i++)
 		{
-			var d = "";
-			var pos = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
-			var real = ["F", "U", "S", "I", "O", "N", " ", "Z", "E", "R", "O"]
-			
-			for (var i = 0; i < 11; i++)
+			if (i < f)
 			{
-				if (i < f)
+				d = d + real[i];
+			}
+			else
+			{
+				if (i == 6)
 				{
-					d = d + real[i];
+					d = d + " ";
 				}
 				else
 				{
-					if (i == 6)
-					{
-						d = d + " ";
-					}
-					else
-					{
-						d = d + pos[Math.floor(Math.random()* 10)];
-					}
+					d = d + pos[Math.floor(Math.random()* 10)];
 				}
 			}
-
-			document.title = d  + " | Editor";
 		}
 
-		function addToF()
-		{
-			f++;
-		}
+		document.title = d  + " | Editor";
+	}
 
+	function addToF()
+	{
+		f++;
+	}
+
+	function startLoop()
+	{
 		setInterval(delayedFunction, 1);
-		setInterval(addToF, 750);
-		
+		setInterval(addToF, 900);
+	}
+
+	setTimeout(startLoop, 5000);
+	
       var canvas = document.querySelector("#unity-canvas");
 
       // Shows a temporary message banner/ribbon for a few seconds, or
@@ -118,7 +125,7 @@
       // JS_FileSystem_Sync() behavior, but in future Unity version, this will be
       // expected to change.
 
-      if (true) {
+      if (true)) {
         // Mobile device style: fill the whole browser client area with the game canvas:
 
         var meta = document.createElement('meta');
