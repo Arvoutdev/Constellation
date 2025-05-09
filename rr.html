@@ -8,18 +8,44 @@
 	
 	<div>
 		<object>
-			<embed src="gmain/sb.swf" width="100%" height="100%" id = "container"/>
+			<embed src="gmain/bo.swf" width="100%" height="100%" id = "bo"/>
+		</object>
+	</div>
+	
+	<div>
+		<object>
+			<embed src="gmain/sb.swf" width="100%" height="100%" id = "sb"/>
+		</object>
+	</div>
+	
+	<div>
+		<object>
+			<embed src="gmain/ab.swf" width="100%" height="100%" id = "ab"/>
+		</object>
+	</div>
+	
+	<div>
+		<object>
+			<embed src="gmain/t2.swf" width="100%" height="100%" id = "t2"/>
+		</object>
+	</div>
+	
+	<div>
+		<object>
+			<embed src="gmain/sb.swf" width="100%" height="100%" id = "t1"/>
 		</object>
 	</div>
 
     <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
 	
-	<p id="p" style="color:red;"/p>
-	
 	<script>
 		var d = 0;
 		
-		document.getElementById("container").style.visibility = 'hidden';
+		document.getElementById("bo").style.visibility = 'hidden';
+		document.getElementById("sb").style.visibility = 'hidden';
+		document.getElementById("ab").style.visibility = 'hidden';
+		document.getElementById("t2").style.visibility = 'hidden';
+		document.getElementById("t1").style.visibility = 'hidden';
 		
 		function m()
 		{
@@ -30,21 +56,7 @@
 				d++;
 			}
 			
-			var c = document.getElementById("input-field").value;
-			
-			if (c == "ab" || c == "bo" || c == "sb" || c == "t2")
-			{
-				document.getElementById("container").style.visibility = 'visible'
-				window.RufflePlayer = window.RufflePlayer || {};
-				window.addEventListener("DOMContentLoaded", () => {
-					let ruffle = window.RufflePlayer.newest();
-					let player = ruffle.createPlayer();
-					let container = document.getElementById("container");
-					container.appendChild(player);
-					player.ruffle().load("gmain/" + c + ".swf");
-				});
-			}
+			document.getElementById(document.getElementById("input-field").value).style.visibility = 'visible';
 		}
 	</script>
 </body>
-
