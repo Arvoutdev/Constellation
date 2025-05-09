@@ -8,31 +8,31 @@
 	
 	<div>
 		<object>
-			<embed src="gmain/bo.swf" width="100%" height="100%" id = "bo"/>
+			<embed src="gmain/bo.swf" width="100%" height="100%" id = "bo" style="display: none;"/>
 		</object>
 	</div>
 	
 	<div>
 		<object>
-			<embed src="gmain/sb.swf" width="100%" height="100%" id = "sb"/>
+			<embed src="gmain/sb.swf" width="100%" height="100%" id = "sb" style="display: none;"/>
 		</object>
 	</div>
 	
 	<div>
 		<object>
-			<embed src="gmain/ab.swf" width="100%" height="100%" id = "ab"/>
+			<embed src="gmain/ab.swf" width="100%" height="100%" id = "ab" style="display: none;"/>
 		</object>
 	</div>
 	
 	<div>
 		<object>
-			<embed src="gmain/t2.swf" width="100%" height="100%" id = "t2"/>
+			<embed src="gmain/t2.swf" width="100%" height="100%" id = "t2" style="display: none;"/>
 		</object>
 	</div>
 	
 	<div>
 		<object>
-			<embed src="gmain/t1.swf" width="100%" height="100%" id = "t1"/>
+			<embed src="gmain/t1.swf" width="100%" height="100%" id = "t1" style="display: none;"/>
 		</object>
 	</div>
 
@@ -40,12 +40,6 @@
 	
 	<script>
 		var d = 0;
-		
-		document.getElementById("bo").style.visibility = 'hidden';
-		document.getElementById("sb").style.visibility = 'hidden';
-		document.getElementById("ab").style.visibility = 'hidden';
-		document.getElementById("t2").style.visibility = 'hidden';
-		document.getElementById("t1").style.visibility = 'hidden';
 		
 		function m()
 		{
@@ -56,7 +50,7 @@
 				d++;
 			}
 			
-			document.getElementById(document.getElementById("input-field").value).style.visibility = 'visible';
+			document.getElementById(document.getElementById("input-field").value).style="display: inline-block;"
 		}
 	</script>
 </body>
