@@ -1,10 +1,10 @@
 <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
 
 <body>
-<div>
+	<div>
 		<input type="text" id="input-field">
 		<button id="demo" onclick="m()">TEST</button>
-</div>
+	</div>
 	
 	<div>
 		<object>
@@ -26,7 +26,11 @@
 				d++;
 			}
 			
-                        document.getElementById("sb").ruffle().load("gmain/" document.getElementById("input-field").value + ".swf");
+                        document.getElementById("sb").ruffle().load("gmain/" document.getElementById("input-field").value + ".swf").then(() => {
+			    console.info("Ruffle successfully loaded the file");
+			}).catch((e) => {
+			    console.error(`Ruffle failed to load the file: ${e}`);
+			});
 		}
 	</script>
 </body>
