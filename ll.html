@@ -8,11 +8,11 @@
 	
 	<div>
 		<object>
-			<embed src= "gmain/bo.swf" width="100%" height="100%" id = "sb"/>
+			<embed src="" width="100%" height="100%" id = "t"/>
 		</object>
 	</div>
 
-  <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
+    <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
 	
 	<script>
 		var d = 0;
@@ -26,11 +26,7 @@
 				d++;
 			}
 			
-                        document.getElementById("sb").ruffle().load("gmain/" document.getElementById("input-field").value + ".swf").then(() => {
-			    console.info("Ruffle successfully loaded the file");
-			}).catch((e) => {
-			    console.error(`Ruffle failed to load the file: ${e}`);
-			});
+			document.getElementById("t").ruffle().load("gmain/" + document.getElementById("input-field").value + ".swf");
 		}
 	</script>
 </body>
