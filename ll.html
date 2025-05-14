@@ -26,8 +26,7 @@
 				d++;
 			}
 			
-			var g = document.getElementById("sb");
-                        g.setCurrentScriptURL("gmain/" document.getElementById("input-field").value + ".swf");
+                        document.getElementById("sb").ruffle().load("gmain/" document.getElementById("input-field").value + ".swf");
 		}
 	</script>
 </body>
