@@ -4,11 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>FUSION ZERO | Editor</title>
-<<<<<<< HEAD
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
-=======
-    <link rel="shortcut icon" href="TemplateData/logo.png">
->>>>>>> parent of 22c650b (OMG 2025s)
     <link rel="stylesheet" href="TemplateData/style.css">
   </head>
   <body>
@@ -30,6 +26,41 @@
     <script>
 	var f = 0;
 
+	function fontChange()
+	{
+		console.log("t")
+		var d = "";
+		var pos = ["ꜰᴜꜱɪᴏɴ ᴢᴇʀᴏ", "Fᵤₛᵢₒₙ Zₑᵣₒ", "ＦＵＳＩＯＮ ＺＥＲＯ", "ꜰᴜꜱɪᴏɴ ᴢᴇʀᴏ"];
+		var real = ["F", "U", "S", "I", "O", "N", " ", "Z", "E", "R", "O"]
+		
+		for (var i = 0; i < 11; i++)
+		{
+			if (i < f)
+			{
+				d = d + real[i];
+			}
+			else
+			{
+				if (i == 6)
+				{
+					d = d + " ";
+				}
+				else
+				{
+					d = d + pos[Math.floor(Math.random() * 4)].split("")[i];
+					console.log(pos[Math.floor(Math.random() * 4)].split("")[i]);
+				}
+			}
+		}
+
+		document.title = d  + " | Editor";
+	}
+
+	function shadowSearch()
+	{
+	
+	}
+	
 	function delayedFunction()
 	{
 		var d = "";
@@ -65,11 +96,11 @@
 
 	function startLoop()
 	{
-		setInterval(delayedFunction, 1);
+		setInterval(fontChange, 100);
 		setInterval(addToF, 900);
 	}
 
-	setTimeout(startLoop, 5000);
+	setTimeout(startLoop, 1000);
 	
       var canvas = document.querySelector("#unity-canvas");
 
