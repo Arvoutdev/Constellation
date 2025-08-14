@@ -1,5 +1,70 @@
-<!DOCTYPE html>
-<html lang="en-us">
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arc Loading Screen</title>
+    <style>
+        :root {
+            --progress: 0.5;
+            --circle-size: 200px;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #1a1a1a;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .loading-container {
+            position: relative;
+            width: var(--circle-size);
+            height: var(--circle-size);
+            mask-image: conic-gradient(
+                white calc(var(--progress) * 360deg), 
+                transparent calc(var(--progress) * 360deg)
+            );
+            mask-size: 100% 100%;
+            mask-repeat: no-repeat;
+        }
+
+        .loading-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            overflow: hidden;
+        }
+        
+        .loading-circle::after {
+            content: '';
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-image: url('https://i.pinimg.com/736x/58/f3/75/58f375a3a099de7bdd83e9bbc1bbeb75.jpg');
+            background-size: cover;
+            animation: rotate 10s linear infinite;
+        }
+        
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="loading-container">
+    <div class="loading-circle"></div>
+</div>
+</body>
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
@@ -7,6 +72,7 @@
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
   </head>
+  <body onbeforeunload="return dontLeave()">
   <body>
     <div id="unity-container" class="unity-desktop">
       <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
@@ -24,6 +90,12 @@
       </div>
     </div>
     <script>
+	
+	window.onbeforeunload = function()
+	{
+		return true;
+	};
+	
 	var f = 0;
 
 	function fontChange()
@@ -54,6 +126,8 @@
 
 		document.title = d  + " | Editor";
 	}
+
+
 
 	function shadowSearch()
 	{
@@ -186,7 +260,7 @@
       script.src = loaderUrl;
       script.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
-          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+          document.querySelector('.loading-container').style.setProperty('--progress', progress);
               }).then((unityInstance) => {
                 document.querySelector("#unity-loading-bar").style.display = "none";
                 document.querySelector("#unity-fullscreen-button").onclick = () => {
