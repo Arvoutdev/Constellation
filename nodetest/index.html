@@ -49,6 +49,27 @@
 		  background-size: cover;
 		  animation: rotate 5s linear infinite;
 		}
+		
+		.container {
+		   background-image: url('TemplateData/red.png');
+		   background-position: center center;
+		   background-repeat: no-repeat;
+		   background-size: cover;
+		   min-height: 100vh;
+		   margin: 0;
+		   padding: 0;
+		   z-index: 100;
+		}
+
+		.fullscreen-image {
+		  position: fixed;
+		  top: 0;
+		  left: 0;
+		  width: 100vw;
+		  height: 100vh;
+		  object-fit: fill;
+		  z-index: 100;
+		}
 
 		.overlay-image {
 		  position: absolute;
@@ -82,7 +103,6 @@
 	<img src="TemplateData/f.png" class="overlay-image">
     <div id="unity-container" class="unity-desktop">
       <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
-	  
       <div id="unity-warning"> </div>
       <div id="unity-footer">
         <div id="unity-logo-title-footer"></div>
@@ -90,6 +110,7 @@
         <div id="unity-build-title">Fusion Zero</div>
       </div>
     </div>
+	<img src="TemplateData/blue.png" style="display: none;" id="crash">
     <script>
 	
 	window.onbeforeunload = function()
@@ -198,18 +219,13 @@
         function updateBannerVisibility() {
           warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
         }
-        var div = document.createElement('div');
-        div.innerHTML = msg;
-        warningBanner.appendChild(div);
-        if (type == 'error') div.style = 'background: red; padding: 10px;';
-        else {
-          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(function() {
-            warningBanner.removeChild(div);
-            updateBannerVisibility();
-          }, 5000);
+        //var div = document.createElement('div');
+        //div.innerHTML = msg;
+        //warningBanner.appendChild(div);
+        if (type == 'error')
+		{
+			document.getElementById("crash").style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: fill; z-index: 100;"
         }
-        updateBannerVisibility();
       }
 
       var buildUrl = "Build";
@@ -269,13 +285,16 @@
         createUnityInstance(canvas, config, (progress) => {
           b = progress;
               }).then((unityInstance) => {
-                document.querySelector("#unity-loading-bar").style.display = "none";
+                document.querySelector('.loading-container').style.display = "none";
+                document.querySelector('.overlay-image').style.display = "none";
                 document.querySelector("#unity-fullscreen-button").onclick = () => {
                   unityInstance.SetFullscreen(1);
                 };
 
               }).catch((message) => {
-                alert(message);
+			  document.getElementById("crash").style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: fill; z-index: 100;"
+                if (message.contians("OOM")) document.getElementById("crash").img = "TemplateData/red.png"
+				else document.getElementById("crash").img = "TemplateData/yellow.png"
               });
             };
 
