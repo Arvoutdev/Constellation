@@ -1,0 +1,15 @@
+{
+    "name": "Fusion Zero",
+    "short_name": "Fusion Zero",
+    "start_url": "index.html",
+    "display": "fullscreen",
+    "background_color": "#FFFFFF",
+    "theme_color": "#fff",
+    "description": "Fusion Zero Version z3.1",
+    "icons": [{
+      "src": "TemplateData/icons/unity-logo-light.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }]
+  }
