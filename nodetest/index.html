@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>FUSION ZERO | Editor </title>
+    <title>FUSION ZERO | Editor</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
     <link rel="manifest" href="manifest.webmanifest">
@@ -20,7 +20,13 @@
       <div id="unity-warning"> </div>
     </div>
     <script>
-	window.onbeforeunload = function()
+      window.addEventListener("load", function () {
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.register("ServiceWorker.js");
+        }
+      });
+
+window.onbeforeunload = function()
 	{
 		return true;
 	};
@@ -112,13 +118,6 @@
 
 	setTimeout(startLoop, 1000);
 	setInterval(loadLoop, 10);
-	
-	
-      window.addEventListener("load", function () {
-        if ("serviceWorker" in navigator) {
-          navigator.serviceWorker.register("ServiceWorker.js");
-        }
-      });
 
       var container = document.querySelector("#unity-container");
       var canvas = document.querySelector("#unity-canvas");
