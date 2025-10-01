@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>FUSION ZERO | Editor</title>
+    <title>Unity Web Player | Fusion Zero</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
     <link rel="manifest" href="manifest.webmanifest">
@@ -25,99 +25,6 @@
           navigator.serviceWorker.register("ServiceWorker.js");
         }
       });
-
-window.onbeforeunload = function()
-	{
-		return true;
-	};
-	
-	var f = 0;
-
-	function fontChange()
-	{
-		var d = "";
-		var pos = ["ꜰᴜꜱɪᴏɴ ᴢᴇʀᴏ", "Fᵤₛᵢₒₙ Zₑᵣₒ", "ＦＵＳＩＯＮ ＺＥＲＯ", "ꜰᴜꜱɪᴏɴ ᴢᴇʀᴏ"];
-		var real = ["F", "U", "S", "I", "O", "N", " ", "Z", "E", "R", "O"]
-		
-		for (var i = 0; i < 11; i++)
-		{
-			if (i < f)
-			{
-				d = d + real[i];
-			}
-			else
-			{
-				if (i == 6)
-				{
-					d = d + " ";
-				}
-				else
-				{
-					d = d + pos[Math.floor(Math.random() * 4)].split("")[i];
-				}
-			}
-		}
-
-		document.title = d  + " | Editor";
-	}
-
-    var a = 0.0;
-    var b = 0.0;
-
-	function loadLoop()
-	{
-		var i = a + (b - a) * 0.07;
-		document.querySelector('.loading-container').style.setProperty('--progress', i);
-		a = i;
-	}
-
-
-	function shadowSearch()
-	{
-	
-	}
-	
-	function delayedFunction()
-	{
-		var d = "";
-		var pos = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
-		var real = ["F", "U", "S", "I", "O", "N", " ", "Z", "E", "R", "O"]
-		
-		for (var i = 0; i < 11; i++)
-		{
-			if (i < f)
-			{
-				d = d + real[i];
-			}
-			else
-			{
-				if (i == 6)
-				{
-					d = d + " ";
-				}
-				else
-				{
-					d = d + pos[Math.floor(Math.random()* 10)];
-				}
-			}
-		}
-
-		document.title = d  + " | Editor";
-	}
-
-	function addToF()
-	{
-		f++;
-	}
-
-	function startLoop()
-	{
-		setInterval(fontChange, 100);
-		setInterval(addToF, 900);
-	}
-
-	setTimeout(startLoop, 1000);
-	setInterval(loadLoop, 10);
 
       var container = document.querySelector("#unity-container");
       var canvas = document.querySelector("#unity-canvas");
@@ -170,7 +77,7 @@ window.onbeforeunload = function()
       // the canvas DOM size and WebGL render target sizes yourself.
       // config.matchWebGLToCanvasSize = false;
 
-      if (true) {
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
         // Mobile device style: fill the whole browser client area with the game canvas:
         var meta = document.createElement('meta');
         meta.name = 'viewport';
