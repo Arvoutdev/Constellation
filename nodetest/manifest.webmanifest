@@ -5,7 +5,7 @@
     "display": "fullscreen",
     "background_color": "#FFFFFF",
     "theme_color": "#fff",
-    "description": "Fusion Zero Version z3.1",
+    "description": "Fusion Zero Version z0.35",
     "icons": [{
       "src": "TemplateData/icons/unity-logo-light.png",
       "sizes": "144x144",
