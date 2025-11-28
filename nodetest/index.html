@@ -3,16 +3,35 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity Web Player | Fusion Zero</title>
+    <title>FUSION ZERO | Editor</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
-    <link rel="manifest" href="manifest.webmanifest">
-    <link rel="stylesheet" href="TemplateData/diagnostics.css">
-    <script src="TemplateData/diagnostics.js"></script>
+    <style>
+      #error-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 9999;
+        display: none;
+      }
+
+      #error-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    </style>
   </head>
+  <body onbeforeunload="return dontLeave()">
   <body>
-    <div id="unity-container">
-      <canvas id="unity-canvas" width=1600 height=900 tabindex="-1"></canvas>
+    <div id="error-overlay">
+      <img id="error-image" src="" alt="Error Screen">
+    </div>
+    
+    <div id="unity-container" class="unity-desktop">
+      <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
       <div id="unity-loading-bar">
         <div id="unity-logo"></div>
         <div id="unity-progress-bar-empty">
@@ -20,106 +39,190 @@
         </div>
       </div>
       <div id="unity-warning"> </div>
-    <div id="unity-footer">
-        <img id="diagnostics-icon" src="TemplateData/webmemd-icon.png">
-    </div>
+      <div id="unity-footer">
+        <div id="unity-logo-title-footer"></div>
+        <div id="unity-fullscreen-button"></div>
+        <div id="unity-build-title">Fusion Zero</div>
+      </div>
     </div>
     <script>
-      window.addEventListener("load", function () {
-        if ("serviceWorker" in navigator) {
-          navigator.serviceWorker.register("ServiceWorker.js");
-        }
-      });
+      
+window.onbeforeunload = function()
+{
+    return true;
+};
+    
+	var f = 0;
 
-      var container = document.querySelector("#unity-container");
-      var canvas = document.querySelector("#unity-canvas");
-      var loadingBar = document.querySelector("#unity-loading-bar");
-      var progressBarFull = document.querySelector("#unity-progress-bar-full");
+	function fontChange()
+	{
+		var d = "";
+		var pos = ["ꜰᴜꜱɪᴏɴ ᴢᴇʀᴏ", "Fᵤₛᵢₒₙ Zₑᵣₒ", "ＦＵＳＩＯＮ ＺＥＲＯ", "ꜰᴜꜱɪᴏɴ ᴢᴇʀᴏ"];
+		var real = ["F", "U", "S", "I", "O", "N", " ", "Z", "E", "R", "O"]
+		
+		for (var i = 0; i < 11; i++)
+		{
+			if (i < f)
+			{
+				d = d + real[i];
+			}
+			else
+			{
+				if (i == 6)
+				{
+					d = d + " ";
+				}
+				else
+				{
+					d = d + pos[Math.floor(Math.random() * 4)].split("")[i];
+				}
+			}
+		}
+
+		document.title = d  + " | Editor";
+	}
+
+	function shadowSearch()
+	{
+	
+	}
+	
+	function delayedFunction()
+	{
+		var d = "";
+		var pos = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
+		var real = ["F", "U", "S", "I", "O", "N", " ", "Z", "E", "R", "O"]
+		
+		for (var i = 0; i < 11; i++)
+		{
+			if (i < f)
+			{
+				d = d + real[i];
+			}
+			else
+			{
+				if (i == 6)
+				{
+					d = d + " ";
+				}
+				else
+				{
+					d = d + pos[Math.floor(Math.random()* 10)];
+				}
+			}
+		}
+
+		document.title = d  + " | Editor";
+	}
+
+	function addToF()
+	{
+		f++;
+	}
+
+	function startLoop()
+	{
+		setInterval(fontChange, 100);
+		setInterval(addToF, 900);
+	}
+
+	setTimeout(startLoop, 1000);
+	
+    function displayCrashImage(imagePath) {
+        const errorOverlay = document.getElementById('error-overlay');
+        const errorImage = document.getElementById('error-image');
+        
+        document.getElementById('unity-container').style.display = 'none';
+        document.getElementById('unity-loading-bar').style.display = 'none';
+        
+        errorImage.src = imagePath;
+        errorOverlay.style.display = 'block';
+    }
+
+    var canvas = document.querySelector("#unity-canvas");
+
+    function unityShowBanner(msg, type) {
       var warningBanner = document.querySelector("#unity-warning");
-
-      // Shows a temporary message banner/ribbon for a few seconds, or
-      // a permanent error message on top of the canvas if type=='error'.
-      // If type=='warning', a yellow highlight color is used.
-      // Modify or remove this function to customize the visually presented
-      // way that non-critical warnings and error messages are presented to the
-      // user.
-      function unityShowBanner(msg, type) {
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
-        }
-        var div = document.createElement('div');
-        div.innerHTML = msg;
-        warningBanner.appendChild(div);
-        if (type == 'error') div.style = 'background: red; padding: 10px;';
-        else {
-          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(function() {
-            warningBanner.removeChild(div);
-            updateBannerVisibility();
-          }, 5000);
-        }
-        updateBannerVisibility();
+      function updateBannerVisibility() {
+        warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
       }
-
-      var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/nodetest.loader.js";
-      var config = {
-        arguments: [],
-        dataUrl: buildUrl + "/nodetest.data.unityweb",
-        frameworkUrl: buildUrl + "/nodetest.framework.js.unityweb",
-        codeUrl: buildUrl + "/nodetest.wasm.unityweb",
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "agent0",
-        productName: "Fusion Zero",
-        productVersion: "z0.35",
-        showBanner: unityShowBanner,
-        // errorHandler: function(err, url, line) {
-        //    alert("error " + err + " occurred at line " + line);
-        //    // Return 'true' if you handled this error and don't want Unity
-        //    // to process it further, 'false' otherwise.
-        //    return true;
-        // },
-      };
-
-      // By default Unity keeps WebGL canvas render target size matched with
-      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
-      // Set this to false if you want to decouple this synchronization from
-      // happening inside the engine, and you would instead like to size up
-      // the canvas DOM size and WebGL render target sizes yourself.
-      // config.matchWebGLToCanvasSize = false;
-
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        // Mobile device style: fill the whole browser client area with the game canvas:
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
+      var div = document.createElement('div');
+      div.innerHTML = msg;
+      warningBanner.appendChild(div);
+      if (type == 'error') div.style = 'background: red; padding: 10px;';
+      else {
+        if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+        setTimeout(function() {
+          warningBanner.removeChild(div);
+          updateBannerVisibility();
+        }, 5000);
       }
+      updateBannerVisibility();
+    }
 
-        // position the diagnostics icon in the corner on the canvas
-        let diagnostics_icon = document.getElementById("diagnostics-icon");
-        diagnostics_icon.style.position = "fixed";
-        diagnostics_icon.style.bottom = "10px";
-        diagnostics_icon.style.right = "0px";
-        canvas.after(diagnostics_icon);
+    var buildUrl = "Build";
+    var loaderUrl = buildUrl + "/nodetest.loader.js";
+    var config = {
+      arguments: [],
+      dataUrl: buildUrl + "/nodetest.data",
+      frameworkUrl: buildUrl + "/nodetest.framework.js",
+      codeUrl: buildUrl + "/nodetest.wasm",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "agent_zero",
+      productName: "Fusion Zero",
+      productVersion: "1.0",
+      showBanner: unityShowBanner,
+      oOMErrorImage: "TemplateData/red.png",
+      nonOOMErrorImage: "TemplateData/yellow.png",
+      loadFailureImage: "TemplateData/blue.png",
+    };
 
-      loadingBar.style.display = "block";
+    if (true) {
+      var meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+      document.getElementsByTagName('head')[0].appendChild(meta);
+      document.querySelector("#unity-container").className = "unity-mobile";
+      canvas.className = "unity-mobile";
+    } else {
+      canvas.style.width = "960px";
+      canvas.style.height = "600px";
+    }
 
-      var script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
-        createUnityInstance(canvas, config, (progress) => {
-          progressBarFull.style.width = 100 * progress + "%";
-        }).then((unityInstance) => {
-          loadingBar.style.display = "none";
-          document.getElementById("diagnostics-icon").onclick = () => {
-              unityDiagnostics.openDiagnosticsDiv(unityInstance.GetMetricsInfo);
-          };
-        }).catch((message) => {
-          alert(message);
+    canvas.style.background = "url('" + buildUrl + "/nodetest.jpg') center / cover";
+    document.querySelector("#unity-loading-bar").style.display = "block";
+
+    var script = document.createElement("script");
+    script.src = loaderUrl;
+    script.onload = () => {
+      createUnityInstance(canvas, config, (progress) => {
+        document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+      }).then((unityInstance) => {
+        document.querySelector("#unity-loading-bar").style.display = "none";
+        document.querySelector("#unity-fullscreen-button").onclick = () => {
+          unityInstance.SetFullscreen(1);
+        };
+
+        unityInstance.on('outOfMemory', (heapSize) => {
+            console.error("Out of Memory Error:", heapSize);
+            displayCrashImage(config.oOMErrorImage);
         });
-      };
-      document.body.appendChild(script);
+
+        unityInstance.on('error', (code, message) => {
+            if (code !== 'abort') {
+                console.error("Unity Runtime Error:", code, message);
+                displayCrashImage(config.nonOOMErrorImage);
+            }
+        });
+
+      }).catch((message) => {
+        console.error("Game Loading Failed:", message);
+        displayCrashImage(config.loadFailureImage);
+      });
+    };
+
+    document.body.appendChild(script);
+
     </script>
   </body>
 </html>
