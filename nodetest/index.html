@@ -66,6 +66,7 @@
       var warningBanner = document.querySelector("#unity-warning");
 
       var f = 0;
+      var loadingSucceeded = false;
 
       function fontChange()
       {
@@ -184,7 +185,7 @@
         loadFailureImage: "TemplateData/blue.png",
       };
 
-      if (true) {
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
         var meta = document.createElement('meta');
         meta.name = 'viewport';
         meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
@@ -205,28 +206,25 @@
         createUnityInstance(canvas, config, (progress) => {
           progressBarFull.style.width = 100 * progress + "%";
         }).then((unityInstance) => {
+          loadingSucceeded = true;
           loadingBar.style.display = "none";
           document.getElementById("diagnostics-icon").onclick = () => {
               unityDiagnostics.openDiagnosticsDiv(unityInstance.GetMetricsInfo);
           };
 
-          // FIXED: OOM now calls abort() which is handled by the unified 'error' listener
           unityInstance.on('outOfMemory', (heapSize) => {
               console.error("Out of Memory Error:", heapSize);
-              // Call unityInstance.abort() to trigger the 'error' handler below with a specific flag
               unityInstance.abort("OOM");
           });
 
-          // UNIFIED CRASH HANDLER: Checks for explicit OOM abort or generic fatal abort
           unityInstance.on('error', (code, message) => {
               if (code === 'abort') {
-                  // Check if the abort was triggered by the OOM handler above
                   if (message === "OOM") {
                       console.error("Unity Runtime Fatal OOM Error:", code, message);
-                      displayCrashImage(config.oOMErrorImage); // RED SCREEN
+                      displayCrashImage(config.oOMErrorImage);
                   } else {
                       console.error("Unity Runtime Fatal Error:", code, message);
-                      displayCrashImage(config.nonOOMErrorImage); // YELLOW SCREEN
+                      displayCrashImage(config.nonOOMErrorImage);
                   }
               } else {
                   console.warn("Unity Runtime Non-Fatal Error:", code, message);
@@ -234,8 +232,12 @@
           });
 
         }).catch((message) => {
-          console.error("Game Loading Failed:", message);
-          displayCrashImage(config.loadFailureImage);
+          if (!loadingSucceeded) { 
+              console.error("Game Loading Failed:", message);
+              displayCrashImage(config.loadFailureImage);
+          } else {
+              console.warn("Non-fatal error caught during loading:", message);
+          }
         });
       };
       document.body.appendChild(script);
