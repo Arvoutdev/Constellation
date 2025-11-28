@@ -25,6 +25,13 @@
         height: 100%;
         object-fit: cover;
       }
+      
+      #unity-loading-bar {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+      }
     </style>
   </head>
   <body>
@@ -91,7 +98,8 @@
       function delayedFunction()
       {
         var d = "";
-        var pos = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
+        var pos = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U",
+                   "V","W","X","Y","Z"];
         var real = ["F", "U", "S", "I", "O", "N", " ", "Z", "E", "R", "O"]
         
         for (var i = 0; i < 11; i++)
@@ -176,7 +184,7 @@
         loadFailureImage: "TemplateData/blue.png",
       };
 
-      if (true) {
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
         var meta = document.createElement('meta');
         meta.name = 'viewport';
         meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
@@ -208,9 +216,11 @@
           });
 
           unityInstance.on('error', (code, message) => {
-              if (code !== 'abort') {
-                  console.error("Unity Runtime Error:", code, message);
+              if (code === 'abort') {
+                  console.error("Unity Runtime Fatal Error:", code, message);
                   displayCrashImage(config.nonOOMErrorImage);
+              } else {
+                  console.warn("Unity Runtime Non-Fatal Error:", code, message);
               }
           });
 
