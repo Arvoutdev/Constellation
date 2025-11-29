@@ -80,6 +80,12 @@
           navigator.serviceWorker.register("ServiceWorker.js");
         }
       });
+	  
+	  window.onbeforeunload = function() {
+          if (loadingSucceeded) {
+              return "You have unsaved changes. Are you sure you want to leave?";
+          }
+      };
 
       var container = document.querySelector("#unity-container");
       var canvas = document.querySelector("#unity-canvas");
@@ -212,20 +218,14 @@
         loadFailureImage: "TemplateData/blue.png",
       };
 
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-      }
-
       let diagnostics_icon = document.getElementById("diagnostics-icon");
 	  
       diagnostics_icon.style.position = "fixed";
       diagnostics_icon.style.bottom = "10px";
       diagnostics_icon.style.right = "10px";
-      diagnostics_icon.style.width = "75px";
-      diagnostics_icon.style.height = "75px";
+      diagnostics_icon.style.width = "45px";
+      diagnostics_icon.style.height = "45px";
+	  diagnostics_icon.style.zIndex = "670";
       canvas.after(diagnostics_icon);
       
       loadingBar.style.display = "block";
