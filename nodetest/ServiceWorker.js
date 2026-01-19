@@ -1,4 +1,4 @@
-const cacheName = "agent0-Fusion Zero-z0.35";
+const cacheName = "agent0-Fusion Zero-z0.36";
 const contentToCache = [
     "Build/nodetest.loader.js",
     "Build/nodetest.framework.js.unityweb",
