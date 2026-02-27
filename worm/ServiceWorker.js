@@ -1,4 +1,4 @@
-const cacheName = "zgames-worm-1.2"; // Increment this to force an update
+const cacheName = "zgames-worm-1.4"; // Increment this to force an update
 const contentToCache = [
     "./", // Cache the root/index file
     "Build/worm.loader.js",
