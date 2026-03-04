@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>worm</title>
+    <title>Unity Web Player | worm</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
     <link rel="manifest" href="manifest.webmanifest">
@@ -60,13 +60,13 @@
       var loaderUrl = buildUrl + "/worm.loader.js";
       var config = {
         arguments: [],
-        dataUrl: buildUrl + "/worm.data.unityweb",
-        frameworkUrl: buildUrl + "/worm.framework.js.unityweb",
-        codeUrl: buildUrl + "/worm.wasm.unityweb",
+        dataUrl: buildUrl + "/worm.data",
+        frameworkUrl: buildUrl + "/worm.framework.js",
+        codeUrl: buildUrl + "/worm.wasm",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "zgames",
         productName: "worm",
-        productVersion: "V1.7",
+        productVersion: "V1.8",
         showBanner: unityShowBanner,
         // errorHandler: function(err, url, line) {
         //    alert("error " + err + " occurred at line " + line);
@@ -83,7 +83,7 @@
       // the canvas DOM size and WebGL render target sizes yourself.
       // config.matchWebGLToCanvasSize = false;
 
-      if (true) {
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
         // Mobile device style: fill the whole browser client area with the game canvas:
         var meta = document.createElement('meta');
         meta.name = 'viewport';

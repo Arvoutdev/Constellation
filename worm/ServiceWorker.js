@@ -1,9 +1,9 @@
-const cacheName = "zgames-worm-V1.7";
+const cacheName = "zgames-worm-V1.8";
 const contentToCache = [
     "Build/worm.loader.js",
-    "Build/worm.framework.js.unityweb",
-    "Build/worm.data.unityweb",
-    "Build/worm.wasm.unityweb",
+    "Build/worm.framework.js",
+    "Build/worm.data",
+    "Build/worm.wasm",
     "TemplateData/style.css"
 
 ];
