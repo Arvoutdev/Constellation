@@ -1,6 +1,5 @@
-const cacheName = "zgames-worm-v1.9";
+const cacheName = "zgames-worm-V1.9";
 const contentToCache = [
-    "index.html",
     "Build/worm.loader.js",
     "Build/worm.framework.js.unityweb",
     "Build/worm.data.unityweb",
@@ -8,40 +7,25 @@ const contentToCache = [
     "TemplateData/style.css"
 ];
 
-self.addEventListener('install', (e) => {
+self.addEventListener('install', function (e) {
+
     console.log('[Service Worker] Install');
-    e.waitUntil(
-        caches.open(cacheName).then((cache) => {
-            console.log('[Service Worker] Caching app shell');
-            return cache.addAll(contentToCache);
-        }).then(() => self.skipWaiting())
-    );
+    e.waitUntil((async function () {
+      const cache = await caches.open(cacheName);
+      console.log('[Service Worker] Caching all: app shell and content');
+      await cache.addAll(contentToCache);
+    })());
 });
 
-self.addEventListener('activate', (e) => {
-    e.waitUntil(
-        caches.keys().then((keyList) => {
-            return Promise.all(keyList.map((key) => {
-                if (key !== cacheName) {
-                    console.log(`[Service Worker] Removing old cache: ${key}`);
-                    return caches.delete(key);
-                }
-            }));
-        }).then(() => self.clients.claim())
-    );
-});
-
-self.addEventListener('fetch', (e) => {
-    e.respondWith(
-        caches.match(e.request).then((response) => {
-            return response || fetch(e.request).then((networkResponse) => {
-                return caches.open(cacheName).then((cache) => {
-                    if (e.request.method === 'GET' && networkResponse.status === 200) {
-                        cache.put(e.request, networkResponse.clone());
-                    }
-                    return networkResponse;
-                });
-            });
-        })
-    );
+self.addEventListener('fetch', function (e) {
+    e.respondWith((async function () {
+      let response = await caches.match(e.request);
+      console.log(`[Service Worker] Fetching resource: ${e.request.url}`);
+      if (response) { return response; }
+      response = await fetch(e.request);
+      const cache = await caches.open(cacheName);
+      console.log(`[Service Worker] Caching new resource: ${e.request.url}`);
+      cache.put(e.request, response.clone());
+      return response;
+    })());
 });
