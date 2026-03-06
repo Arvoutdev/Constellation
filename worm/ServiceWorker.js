@@ -1,6 +1,6 @@
-const cacheName = "zgames-worm-1.9"; // Increment this to force an update
+const cacheName = "zgames-worm-v1.9";
 const contentToCache = [
-    "./", // Cache the root/index file
+    "index.html",
     "Build/worm.loader.js",
     "Build/worm.framework.js.unityweb",
     "Build/worm.data.unityweb",
@@ -8,46 +8,40 @@ const contentToCache = [
     "TemplateData/style.css"
 ];
 
-// 1. Install Event - Sets up the initial cache
 self.addEventListener('install', (e) => {
     console.log('[Service Worker] Install');
-    // Forces the waiting service worker to become the active service worker.
-    self.skipWaiting(); 
-    
-    e.waitUntil((async () => {
-        const cache = await caches.open(cacheName);
-        console.log('[Service Worker] Caching app shell');
-        await cache.addAll(contentToCache);
-    })());
+    e.waitUntil(
+        caches.open(cacheName).then((cache) => {
+            console.log('[Service Worker] Caching app shell');
+            return cache.addAll(contentToCache);
+        }).then(() => self.skipWaiting())
+    );
 });
 
-// 2. Activate Event - THE FIX: This deletes old versions
 self.addEventListener('activate', (e) => {
-    console.log('[Service Worker] Activate');
-    e.waitUntil((async () => {
-        const keyList = await caches.keys();
-        await Promise.all(keyList.map((key) => {
-            if (key !== cacheName) {
-                console.log(`[Service Worker] Removing old cache: ${key}`);
-                return caches.delete(key);
-            }
-        }));
-        // Ensures that updates to the service worker take effect immediately
-        return self.clients.claim();
-    })());
+    e.waitUntil(
+        caches.keys().then((keyList) => {
+            return Promise.all(keyList.map((key) => {
+                if (key !== cacheName) {
+                    console.log(`[Service Worker] Removing old cache: ${key}`);
+                    return caches.delete(key);
+                }
+            }));
+        }).then(() => self.clients.claim())
+    );
 });
 
-// 3. Fetch Event - Strategy: Cache First, then Network
 self.addEventListener('fetch', (e) => {
-    e.respondWith((async () => {
-        const r = await caches.match(e.request);
-        console.log(`[Service Worker] Fetching resource: ${e.request.url}`);
-        if (r) return r;
-
-        const response = await fetch(e.request);
-        const cache = await caches.open(cacheName);
-        console.log(`[Service Worker] Caching new resource: ${e.request.url}`);
-        cache.put(e.request, response.clone());
-        return response;
-    })());
+    e.respondWith(
+        caches.match(e.request).then((response) => {
+            return response || fetch(e.request).then((networkResponse) => {
+                return caches.open(cacheName).then((cache) => {
+                    if (e.request.method === 'GET' && networkResponse.status === 200) {
+                        cache.put(e.request, networkResponse.clone());
+                    }
+                    return networkResponse;
+                });
+            });
+        })
+    );
 });
