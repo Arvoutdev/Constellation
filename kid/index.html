@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kindergarten</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #unity-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    #unity-canvas {
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+    #unity-loading-bar {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #1a1a1a;
+      gap: 16px;
+      font-family: sans-serif;
+      color: #fff;
+    }
+    #unity-progress-bar-empty {
+      width: 40%;
+      height: 8px;
+      background: #333;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    #unity-progress-bar-full {
+      height: 100%;
+      width: 0%;
+      background: #4a9eff;
+      border-radius: 4px;
+      transition: width 0.1s ease;
+    }
+    #unity-loading-text { font-size: 14px; color: #aaa; }
+    #unity-error {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: #1a1a1a;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      color: #ff6b6b;
+      text-align: center;
+      padding: 24px;
+      font-family: sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="unity-container">
+    <canvas id="unity-canvas"></canvas>
+    <div id="unity-loading-bar">
+      <div id="unity-loading-text">Loading...</div>
+      <div id="unity-progress-bar-empty">
+        <div id="unity-progress-bar-full"></div>
+      </div>
+    </div>
+    <div id="unity-error">
+      <strong>Failed to load game</strong>
+      <span id="unity-error-message"></span>
+    </div>
+  </div>
+
+  <script>
+    function firebaseLogEvent(event, params) {}
+    function firebaseLogEventParameter(event, key, value) {}
+  </script>
+
+  <script src="Build/game.loader.js"></script>
+  <script>
+    const config = {
+      dataUrl:            "Build/game.data.unityweb",
+      frameworkUrl:       "Build/game.framework.js.unityweb",
+      codeUrl:            "Build/game.wasm.unityweb",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName:        "DefaultCompany",
+      productName:        "MyGame",
+      productVersion:     "1.0",
+    };
+
+    const canvas       = document.getElementById("unity-canvas");
+    const loadingBar   = document.getElementById("unity-loading-bar");
+    const progressFull = document.getElementById("unity-progress-bar-full");
+    const loadingText  = document.getElementById("unity-loading-text");
+    const errorBox     = document.getElementById("unity-error");
+    const errorMsg     = document.getElementById("unity-error-message");
+
+    createUnityInstance(canvas, config, (progress) => {
+      progressFull.style.width = (100 * progress) + "%";
+      loadingText.textContent  = Math.round(100 * progress) + "%";
+    })
+    .then((unityInstance) => {
+      loadingBar.style.display = "none";
+      window.unityInstance = unityInstance;
+    })
+    .catch((message) => {
+      loadingBar.style.display = "none";
+      errorBox.style.display   = "flex";
+      errorMsg.textContent     = message;
+      console.error("Unity WebGL error:", message);
+    });
+  </script>
+</body>
+</html>
