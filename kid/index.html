@@ -81,6 +81,7 @@
   </div>
 
   <script>
+    // Firebase stubs
     function firebaseLogEvent(event, params) {}
     function firebaseLogEventParameter(event, key, value) {}
   </script>
@@ -88,14 +89,13 @@
   <script src="Build/game.loader.js"></script>
   <script>
     const config = {
-      dataUrl:            "Build/game.data.unityweb",
-      frameworkUrl:       "Build/game.framework.js.unityweb",
-      codeUrl:            "Build/game.wasm.unityweb",
+      dataUrl:            "Build/game.data",
+      frameworkUrl:       "Build/game.framework.js",
+      codeUrl:            "Build/game.wasm",
       streamingAssetsUrl: "StreamingAssets",
       companyName:        "DefaultCompany",
       productName:        "MyGame",
       productVersion:     "1.0",
-      decompressionFallback: true,
     };
 
     const canvas       = document.getElementById("unity-canvas");
