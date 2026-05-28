@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>lil' counting game</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --panel: #1a1a26;
+    --accent: #e8ff47;
+    --accent2: #ff4778;
+    --accent3: #47c8ff;
+    --text: #f0f0f8;
+    --muted: #666688;
+    --border: #2a2a3a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* NOISE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.4;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: relative;
+    z-index: 10;
+  }
+
+  .header-info {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .seed-display {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    background: var(--panel);
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+
+  .round-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    background: rgba(232,255,71,0.08);
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid rgba(232,255,71,0.2);
+  }
+
+  /* MAIN AREA */
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* STATUS BAR */
+  #status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 32px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    z-index: 5;
+  }
+
+  #phase-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+  }
+
+  #phase-label .phase-name {
+    color: var(--accent3);
+    font-weight: 700;
+  }
+
+  /* PROGRESS BAR */
+  #progress-wrap {
+    flex: 1;
+    margin: 0 24px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  #progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent3), var(--accent));
+    width: 100%;
+    transform-origin: left;
+    transition: none;
+    border-radius: 2px;
+  }
+
+  #timer-display {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.5rem;
+    color: var(--text);
+    min-width: 60px;
+    text-align: right;
+    letter-spacing: 0.05em;
+  }
+
+  /* CANVAS AREA */
+  #canvas-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #game-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* OVERLAY STATES */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,10,15,0.92);
+    z-index: 20;
+    backdrop-filter: blur(8px);
+    transition: opacity 0.3s;
+  }
+
+  .overlay.hidden { display: none; }
+
+  /* WAITING OVERLAY */
+  #waiting-overlay .wait-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 3.5rem;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-shadow: 0 0 40px rgba(232,255,71,0.3);
+    margin-bottom: 12px;
+  }
+
+  #waiting-overlay .wait-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: center;
+    max-width: 360px;
+    line-height: 1.7;
+  }
+
+  #wait-countdown {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 5rem;
+    color: var(--accent3);
+    margin: 20px 0;
+    letter-spacing: 0.05em;
+    text-shadow: 0 0 60px rgba(71,200,255,0.5);
+  }
+
+  /* SCORE OVERLAY */
+  #score-overlay .score-wrap {
+    text-align: center;
+  }
+
+  #score-overlay .score-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  #score-overlay .answer-reveal {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 5rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+
+  #score-overlay .answer-reveal.correct { color: var(--accent); }
+  #score-overlay .answer-reveal.wrong { color: var(--accent2); }
+  #score-overlay .answer-reveal.timeout { color: var(--muted); }
+
+  #score-overlay .result-text {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.1rem;
+    color: var(--text);
+    margin-bottom: 28px;
+    font-weight: 300;
+  }
+
+  .score-detail-row {
+    display: flex;
+    gap: 32px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+
+  .score-detail {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 24px;
+    text-align: center;
+  }
+
+  .score-detail .sd-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.2rem;
+    letter-spacing: 0.05em;
+    color: var(--accent3);
+    display: block;
+  }
+
+  .score-detail .sd-key {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    margin-top: 2px;
+    display: block;
+  }
+
+  .next-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    margin-top: 12px;
+  }
+
+  .next-label span {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* MISSED OVERLAY */
+  #missed-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,10,15,0.94);
+    z-index: 20;
+    backdrop-filter: blur(8px);
+  }
+
+  #missed-overlay.hidden { display: none; }
+
+  #missed-overlay .missed-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 3rem;
+    color: var(--accent2);
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+  }
+
+  #missed-overlay .missed-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-align: center;
+    max-width: 360px;
+    line-height: 1.7;
+  }
+
+  #missed-wait {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 4rem;
+    color: var(--accent);
+    margin: 16px 0 4px;
+    letter-spacing: 0.05em;
+    text-shadow: 0 0 40px rgba(232,255,71,0.4);
+  }
+
+  #missed-next-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  /* INPUT AREA */
+  #input-area {
+    padding: 20px 32px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    z-index: 5;
+  }
+
+  #input-area.locked {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  #shape-hint {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    flex: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  #shape-hint strong {
+    color: var(--text);
+    font-size: 0.85rem;
+    display: block;
+    margin-top: 2px;
+  }
+
+  #answer-input {
+    background: var(--panel);
+    border: 2px solid var(--border);
+    color: var(--text);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 0.08em;
+    width: 100px;
+    text-align: center;
+    padding: 10px;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  #answer-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(232,255,71,0.12);
+  }
+
+  #answer-input::-webkit-outer-spin-button,
+  #answer-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  #submit-btn {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 0.12em;
+    padding: 14px 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+
+  #submit-btn:hover { background: #d4e840; transform: translateY(-1px); }
+  #submit-btn:active { transform: translateY(0); }
+
+  /* LEADERBOARD PANEL */
+  #leaderboard {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 220px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 0 24px;
+    transform: translateX(100%);
+    transition: transform 0.3s;
+  }
+
+  #leaderboard.visible { transform: translateX(0); }
+
+  /* FLASH EFFECT */
+  .flash {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0;
+  }
+
+  .flash.correct-flash {
+    background: rgba(232,255,71,0.08);
+    animation: flashAnim 0.4s ease-out;
+  }
+
+  .flash.wrong-flash {
+    background: rgba(255,71,120,0.08);
+    animation: flashAnim 0.4s ease-out;
+  }
+
+  @keyframes flashAnim {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  /* COUNTDOWN OVERLAY (between rounds) */
+  #countdown-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,10,15,0.88);
+    z-index: 25;
+    backdrop-filter: blur(6px);
+  }
+
+  #countdown-overlay.hidden { display: none; }
+
+  #countdown-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 12rem;
+    color: var(--accent);
+    text-shadow: 0 0 80px rgba(232,255,71,0.5);
+    letter-spacing: 0.02em;
+    animation: countPulse 1s ease-in-out infinite;
+    line-height: 1;
+  }
+
+  @keyframes countPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.06); opacity: 0.85; }
+  }
+
+  /* Shape question text */
+  #question-text {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    background: var(--panel);
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    z-index: 4;
+  }
+
+  #question-text strong { color: var(--text); }
+
+  /* submitted indicator */
+  #submitted-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--accent3);
+    background: rgba(71,200,255,0.08);
+    border: 1px solid rgba(71,200,255,0.2);
+    padding: 4px 12px;
+    border-radius: 4px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-info">
+    <div class="seed-display" id="seed-display">SEED: —</div>
+    <div class="round-badge" id="round-badge">ROUND —</div>
+  </div>
+</header>
+
+<main>
+  <div id="status-bar">
+    <div id="phase-label">PHASE: <span class="phase-name" id="phase-name">WAITING</span></div>
+    <div id="progress-wrap">
+      <div id="progress-bar"></div>
+    </div>
+    <div id="timer-display" id="timer-display">—</div>
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="game-canvas"></canvas>
+    <div id="question-text">HOW MANY <strong id="shape-name-q">—</strong>?</div>
+
+    <!-- Overlays -->
+    <div class="overlay" id="waiting-overlay">
+      <div class="wait-title">COUNTBLIND</div>
+      <div class="wait-sub">Count shapes as fast as you can.<br>Everyone on the same seed plays together.</div>
+      <div id="wait-countdown">—</div>
+      <div class="wait-sub">seconds until next round</div>
+    </div>
+
+    <div class="overlay hidden" id="score-overlay">
+      <div class="score-wrap">
+        <div class="score-label">The answer was</div>
+        <div class="answer-reveal" id="answer-reveal">—</div>
+        <div class="result-text" id="result-text">—</div>
+        <div class="score-detail-row">
+          <div class="score-detail">
+            <span class="sd-val" id="sd-your">—</span>
+            <span class="sd-key">Your Guess</span>
+          </div>
+          <div class="score-detail">
+            <span class="sd-val" id="sd-time">—</span>
+            <span class="sd-key">Time (ms)</span>
+          </div>
+          <div class="score-detail">
+            <span class="sd-val" id="sd-correct">—</span>
+            <span class="sd-key">Correct</span>
+          </div>
+        </div>
+        <div class="next-label">NEXT ROUND IN <span id="next-countdown">—</span>s</div>
+      </div>
+    </div>
+
+    <div id="missed-overlay" class="hidden">
+      <div class="missed-title">ROUND IN PROGRESS</div>
+      <div class="missed-sub">A round is currently underway.<br>Wait for the next one to play.</div>
+      <div id="missed-wait">—</div>
+      <div id="missed-next-label">SECONDS UNTIL YOUR ROUND</div>
+    </div>
+
+    <div id="countdown-overlay" class="hidden">
+      <div id="countdown-number">5</div>
+    </div>
+  </div>
+
+  <div id="input-area">
+    <div id="shape-hint">
+      Count the shapes:
+      <strong id="shape-hint-name">—</strong>
+    </div>
+    <span id="submitted-tag">✓ SUBMITTED</span>
+    <input type="number" id="answer-input" min="5" max="20" placeholder="?" autocomplete="off">
+    <button id="submit-btn">SUBMIT</button>
+  </div>
+</main>
+
+<div id="flash" class="flash"></div>
+
+<script>
+/* ─────────────────────────────────────────────
+   SEEDED PRNG — Mulberry32
+───────────────────────────────────────────── */
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* ─────────────────────────────────────────────
+   TIMING CONSTANTS
+   Cycle is always 35s (fixed boundary = same seed for everyone).
+   Play window: 10s for <=10 shapes, 20s for >10 shapes.
+   Score: 10s. Countdown: 5s.
+───────────────────────────────────────────── */
+const PLAY_DURATION_SHORT = 10000; // <=10 shapes
+const PLAY_DURATION_LONG  = 20000; // >10 shapes
+const SCORE_DURATION      = 10000;
+const COUNT_DURATION      = 5000;
+const CYCLE_DURATION = PLAY_DURATION_LONG + SCORE_DURATION + COUNT_DURATION; // 35s
+
+/* ─────────────────────────────────────────────
+   SEED CALCULATION
+───────────────────────────────────────────── */
+function getCurrentSeed() {
+  return Math.floor(Date.now() / CYCLE_DURATION);
+}
+
+function getPlayDuration(seed) {
+  const p = getRoundParams(seed);
+  return p.count > 10 ? PLAY_DURATION_LONG : PLAY_DURATION_SHORT;
+}
+
+function getPhaseInfo(seed) {
+  const now = Date.now();
+  const cycleStart = Math.floor(now / CYCLE_DURATION) * CYCLE_DURATION;
+  const elapsed = now - cycleStart;
+  const playDur = (seed != null) ? getPlayDuration(seed) : PLAY_DURATION_LONG;
+
+  if (elapsed < playDur) {
+    return { phase: 'play', elapsed, timeLeft: playDur - elapsed, playDur };
+  } else if (elapsed < PLAY_DURATION_LONG + SCORE_DURATION) {
+    const scoreElapsed = elapsed - PLAY_DURATION_LONG;
+    return { phase: 'score', elapsed: scoreElapsed, timeLeft: SCORE_DURATION - scoreElapsed, playDur };
+  } else {
+    const cntElapsed = elapsed - PLAY_DURATION_LONG - SCORE_DURATION;
+    return { phase: 'countdown', elapsed: cntElapsed, timeLeft: COUNT_DURATION - cntElapsed, playDur };
+  }
+}
+
+/* ─────────────────────────────────────────────
+   ROUND PARAMETERS from seed
+───────────────────────────────────────────── */
+const SHAPE_TYPES = ['square','circle','triangle','star','oval','number','letter'];
+const LAYOUT_TYPES = ['scattered','grid','line'];
+
+const COLORS = [
+  '#e8ff47','#ff4778','#47c8ff','#ff9f47','#a047ff',
+  '#47ffb8','#ff6b47','#47a0ff','#ff47d4','#b8ff47',
+  '#ffffff','#ffcc00','#00e5ff','#ff3d71','#c8ff3d'
+];
+
+const NUMBERS = ['3','6','7','8','9'];
+const LETTERS = ['A','B','E','F','G','H','K','M','N','P','R','S','T','W'];
+
+function getRoundParams(seed) {
+  const rng = mulberry32(seed);
+  const shapeType = SHAPE_TYPES[Math.floor(rng() * SHAPE_TYPES.length)];
+  const count = 5 + Math.floor(rng() * 16); // 5-20
+  const layout = LAYOUT_TYPES[Math.floor(rng() * LAYOUT_TYPES.length)];
+
+  // Color mode: 0=all same color, 1=all same color(2/3 chance each), 2=multi
+  const colorMode = rng() < 0.33 ? 'multi' : 'single';
+  const primaryColor = COLORS[Math.floor(rng() * COLORS.length)];
+
+  // For number/letter pick which one
+  let charValue = null;
+  if (shapeType === 'number') charValue = NUMBERS[Math.floor(rng() * NUMBERS.length)];
+  if (shapeType === 'letter') charValue = LETTERS[Math.floor(rng() * LETTERS.length)];
+
+  // Size variation
+  const baseSize = 24 + Math.floor(rng() * 32); // 24-56px
+
+  return { shapeType, count, layout, colorMode, primaryColor, charValue, baseSize, rng };
+}
+
+/* ─────────────────────────────────────────────
+   CANVAS RENDERING
+───────────────────────────────────────────── */
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const wrap = document.getElementById('canvas-wrap');
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+}
+
+function getShapeColor(params, rng) {
+  if (params.colorMode === 'single') return params.primaryColor;
+  return COLORS[Math.floor(rng() * COLORS.length)];
+}
+
+function drawShape(ctx, type, x, y, size, color, charValue) {
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+
+  switch(type) {
+    case 'square':
+      ctx.fillRect(x - size/2, y - size/2, size, size);
+      break;
+
+    case 'circle':
+      ctx.beginPath();
+      ctx.arc(x, y, size/2, 0, Math.PI*2);
+      ctx.fill();
+      break;
+
+    case 'triangle':
+      ctx.beginPath();
+      ctx.moveTo(x, y - size/2);
+      ctx.lineTo(x + size/2, y + size/2);
+      ctx.lineTo(x - size/2, y + size/2);
+      ctx.closePath();
+      ctx.fill();
+      break;
+
+    case 'star': {
+      const outerR = size/2, innerR = size/4.5;
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const r = i % 2 === 0 ? outerR : innerR;
+        const angle = (i * Math.PI / 5) - Math.PI/2;
+        if (i === 0) ctx.moveTo(x + r*Math.cos(angle), y + r*Math.sin(angle));
+        else ctx.lineTo(x + r*Math.cos(angle), y + r*Math.sin(angle));
+      }
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+
+    case 'oval':
+      ctx.beginPath();
+      ctx.ellipse(x, y, size*0.65, size*0.38, 0, 0, Math.PI*2);
+      ctx.fill();
+      break;
+
+    case 'number':
+    case 'letter':
+      ctx.font = `bold ${size}px 'Bebas Neue', monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(charValue, x, y);
+      break;
+  }
+}
+
+function computePositions(layout, count, canvasW, canvasH, baseSize, rng) {
+  const margin = baseSize + 24;
+  const usableW = canvasW - margin * 2;
+  const usableH = canvasH - margin * 2;
+  const positions = [];
+
+  if (layout === 'scattered') {
+    // Simple random with some collision avoidance
+    const minDist = baseSize * 1.4;
+    let attempts = 0;
+    while (positions.length < count && attempts < 2000) {
+      attempts++;
+      const x = margin + rng() * usableW;
+      const y = margin + rng() * usableH;
+      let ok = true;
+      for (const p of positions) {
+        const dx = p.x - x, dy = p.y - y;
+        if (Math.sqrt(dx*dx+dy*dy) < minDist) { ok = false; break; }
+      }
+      if (ok) positions.push({ x, y });
+    }
+    // If still not enough, just place them
+    while (positions.length < count) {
+      positions.push({
+        x: margin + rng() * usableW,
+        y: margin + rng() * usableH
+      });
+    }
+
+  } else if (layout === 'grid') {
+    const cols = Math.ceil(Math.sqrt(count));
+    const rows = Math.ceil(count / cols);
+    const cellW = usableW / cols;
+    const cellH = usableH / rows;
+    let placed = 0;
+    for (let r = 0; r < rows && placed < count; r++) {
+      for (let c = 0; c < cols && placed < count; c++) {
+        positions.push({
+          x: margin + c * cellW + cellW/2,
+          y: margin + r * cellH + cellH/2
+        });
+        placed++;
+      }
+    }
+
+  } else { // line
+    const vertical = rng() < 0.5;
+    if (vertical) {
+      const x = canvasW / 2;
+      const spacing = usableH / (count + 1);
+      for (let i = 0; i < count; i++) {
+        positions.push({ x, y: margin + spacing * (i + 1) });
+      }
+    } else {
+      const y = canvasH / 2;
+      const spacing = usableW / (count + 1);
+      for (let i = 0; i < count; i++) {
+        positions.push({ x: margin + spacing * (i + 1), y });
+      }
+    }
+  }
+
+  return positions;
+}
+
+let currentPositions = [];
+let currentParams = null;
+
+function renderRound(seed) {
+  resizeCanvas();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const params = getRoundParams(seed);
+  currentParams = params;
+
+  // Draw subtle bg grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+  ctx.lineWidth = 1;
+  const gridSize = 40;
+  for (let x = 0; x < canvas.width; x += gridSize) {
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
+  }
+  for (let y = 0; y < canvas.height; y += gridSize) {
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
+  }
+
+  // Position RNG is separate so color RNG can follow
+  const posRng = mulberry32(seed * 31337 + 1);
+  const positions = computePositions(params.layout, params.count, canvas.width, canvas.height, params.baseSize, posRng);
+  currentPositions = positions;
+
+  const colorRng = mulberry32(seed * 99991 + 7);
+
+  for (const pos of positions) {
+    const color = getShapeColor(params, colorRng);
+    // Subtle shadow
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 12;
+    drawShape(ctx, params.shapeType, pos.x, pos.y, params.baseSize, color, params.charValue);
+    ctx.shadowBlur = 0;
+  }
+
+  // Update UI labels
+  const shapeName = params.shapeType === 'number'
+    ? `the number ${params.charValue}`
+    : params.shapeType === 'letter'
+    ? `the letter ${params.charValue}`
+    : `${params.shapeType}s`;
+
+  document.getElementById('shape-name-q').textContent = shapeName.toUpperCase();
+  document.getElementById('shape-hint-name').textContent = shapeName.toUpperCase();
+
+  return params;
+}
+
+/* ─────────────────────────────────────────────
+   STATE MACHINE
+───────────────────────────────────────────── */
+let playerState = 'idle'; // idle | waiting | playing | submitted | score | missed
+let playerJoinedMidRound = false;
+let playerAnswer = null;
+let playerAnswerTime = null; // ms into the round
+let roundStartEpoch = null;
+let currentSeed = null;
+
+let animFrame = null;
+let tickInterval = null;
+
+const $ = id => document.getElementById(id);
+
+function showOnly(overlayId) {
+  ['waiting-overlay','score-overlay','missed-overlay','countdown-overlay'].forEach(id => {
+    $(id).classList.add('hidden');
+  });
+  if (overlayId) $(overlayId).classList.remove('hidden');
+}
+
+function setInputLocked(locked) {
+  const area = $('input-area');
+  if (locked) area.classList.add('locked');
+  else area.classList.remove('locked');
+}
+
+function formatShapeName(params) {
+  if (!params) return '—';
+  if (params.shapeType === 'number') return `the number ${params.charValue}`;
+  if (params.shapeType === 'letter') return `the letter ${params.charValue}`;
+  return `${params.shapeType}s`;
+}
+
+function fmtMs(ms) {
+  return ms.toLocaleString() + '<span style="font-size:0.55em;opacity:0.75;letter-spacing:0.05em">ms</span>';
+}
+
+function tick() {
+  const seed = getCurrentSeed();
+  const info = getPhaseInfo(seed);
+  const cycleStart = Math.floor(Date.now() / CYCLE_DURATION) * CYCLE_DURATION;
+
+  $('seed-display').textContent = `SEED: ${seed}`;
+  $('round-badge').textContent = `ROUND ${seed % 9999 + 1}`;
+
+  /* ── PLAY PHASE ── */
+  if (info.phase === 'play') {
+    const progress = 1 - info.elapsed / info.playDur;
+    $('progress-bar').style.width = (progress * 100) + '%';
+    $('timer-display').textContent = (info.timeLeft / 1000).toFixed(1) + 's';
+    $('phase-name').textContent = info.playDur === PLAY_DURATION_LONG ? 'PLAY — 20s' : 'PLAY — 10s';
+
+    if (seed !== currentSeed) {
+      // New round started — reset
+      currentSeed = seed;
+      roundStartEpoch = cycleStart;
+      playerAnswer = null;
+      playerAnswerTime = null;
+      $('answer-input').value = '';
+      $('submitted-tag').style.display = 'none';
+
+      if (playerJoinedMidRound) {
+        // They were in missed state — now they can play!
+        playerJoinedMidRound = false;
+      }
+
+      renderRound(seed);
+      showOnly(null);
+      setInputLocked(false);
+      playerState = 'playing';
+      $('answer-input').focus();
+    }
+
+    if (playerState === 'missed') {
+      // Show missed overlay with time left in cycle
+      const totalLeft = info.timeLeft + SCORE_DURATION + COUNT_DURATION;
+      // (score phase starts at PLAY_DURATION_LONG boundary)
+      showOnly('missed-overlay');
+      $('missed-wait').textContent = Math.ceil(totalLeft / 1000);
+      $('missed-next-label').textContent = 'SECONDS UNTIL NEXT ROUND';
+    }
+
+  /* ── SCORE PHASE ── */
+  } else if (info.phase === 'score') {
+    const progress = 1 - info.elapsed / SCORE_DURATION;
+    $('progress-bar').style.width = (progress * 100) + '%';
+    $('timer-display').textContent = (info.timeLeft / 1000).toFixed(1) + 's';
+    $('phase-name').textContent = 'RESULTS';
+    setInputLocked(true);
+
+    if (playerState === 'playing' || playerState === 'submitted') {
+      // Reveal score
+      playerState = 'score';
+      const params = currentParams || getRoundParams(seed);
+      const correctAnswer = params.count;
+
+      $('answer-reveal').textContent = correctAnswer;
+      $('sd-correct').textContent = correctAnswer;
+
+      if (playerAnswer === null) {
+        // Time ran out
+        $('answer-reveal').className = 'answer-reveal timeout';
+        $('result-text').textContent = "Time's up — you didn't answer!";
+        $('sd-your').textContent = '—';
+        $('sd-time').textContent = '—';
+      } else if (parseInt(playerAnswer) === correctAnswer) {
+        $('answer-reveal').className = 'answer-reveal correct';
+        $('result-text').textContent = '✓ Correct! Well done.';
+        $('sd-your').textContent = playerAnswer;
+        $('sd-time').innerHTML = fmtMs(playerAnswerTime);
+        triggerFlash('correct');
+      } else {
+        $('answer-reveal').className = 'answer-reveal wrong';
+        $('result-text').textContent = `✗ Wrong — you said ${playerAnswer}.`;
+        $('sd-your').textContent = playerAnswer;
+        $('sd-time').innerHTML = playerAnswerTime ? fmtMs(playerAnswerTime) : '—';
+        triggerFlash('wrong');
+      }
+      showOnly('score-overlay');
+    } else if (playerState === 'missed') {
+      const totalLeft = info.timeLeft + COUNT_DURATION;
+      showOnly('missed-overlay');
+      $('missed-wait').textContent = Math.ceil(totalLeft / 1000);
+      $('missed-next-label').textContent = 'SECONDS UNTIL NEXT ROUND';
+    }
+
+    $('next-countdown').textContent = Math.ceil((info.timeLeft + COUNT_DURATION) / 1000);
+
+  /* ── COUNTDOWN PHASE ── */
+  } else if (info.phase === 'countdown') {
+    const progress = 1 - info.elapsed / COUNT_DURATION;
+    $('progress-bar').style.width = (progress * 100) + '%';
+    $('timer-display').textContent = (info.timeLeft / 1000).toFixed(1) + 's';
+    $('phase-name').textContent = 'NEXT ROUND';
+    setInputLocked(true);
+
+    const countNum = Math.ceil(info.timeLeft / 1000);
+
+    if (playerState === 'missed') {
+      showOnly('missed-overlay');
+      $('missed-wait').textContent = countNum;
+      $('missed-next-label').textContent = 'SECONDS UNTIL NEXT ROUND';
+    } else {
+      showOnly('countdown-overlay');
+      $('countdown-number').textContent = countNum;
+    }
+  }
+}
+
+function init() {
+  resizeCanvas();
+
+  const seed = getCurrentSeed();
+  const info = getPhaseInfo(seed);
+  currentSeed = seed;
+
+  // Check if player is joining mid-round
+  if (info.phase === 'play' && info.elapsed > 500) {
+    // Mid-round join — mark as missed
+    playerJoinedMidRound = true;
+    playerState = 'missed';
+    renderRound(seed); // Still render so they can see (but can't answer)
+    showOnly('missed-overlay');
+    setInputLocked(true);
+  } else if (info.phase === 'score') {
+    playerState = 'missed';
+    showOnly('missed-overlay');
+    setInputLocked(true);
+    const params = getRoundParams(seed);
+    document.getElementById('shape-name-q').textContent = formatShapeName(params).toUpperCase();
+    document.getElementById('shape-hint-name').textContent = formatShapeName(params).toUpperCase();
+  } else if (info.phase === 'countdown') {
+    playerState = 'missed';
+    showOnly('countdown-overlay');
+    setInputLocked(true);
+  } else {
+    // Beginning of play phase or very first tick
+    roundStartEpoch = Math.floor(Date.now() / CYCLE_DURATION) * CYCLE_DURATION;
+    renderRound(seed);
+    showOnly(null);
+    setInputLocked(false);
+    playerState = 'playing';
+    setTimeout(() => $('answer-input').focus(), 50);
+  }
+
+  tickInterval = setInterval(tick, 100);
+  tick();
+}
+
+/* ─────────────────────────────────────────────
+   SUBMISSION
+───────────────────────────────────────────── */
+function submitAnswer() {
+  if (playerState !== 'playing') return;
+  const val = parseInt($('answer-input').value);
+  if (isNaN(val) || val < 5 || val > 20) {
+    $('answer-input').style.borderColor = 'var(--accent2)';
+    setTimeout(() => $('answer-input').style.borderColor = '', 500);
+    return;
+  }
+
+  playerAnswer = val;
+  const now = Date.now();
+  const cycleStart = Math.floor(now / CYCLE_DURATION) * CYCLE_DURATION;
+  playerAnswerTime = now - cycleStart;
+
+  playerState = 'submitted';
+  setInputLocked(true);
+  $('submitted-tag').style.display = 'inline';
+}
+
+$('submit-btn').addEventListener('click', submitAnswer);
+$('answer-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitAnswer();
+});
+
+/* ─────────────────────────────────────────────
+   FLASH EFFECT
+───────────────────────────────────────────── */
+function triggerFlash(type) {
+  const el = $('flash');
+  el.className = 'flash';
+  void el.offsetWidth;
+  el.className = `flash ${type}-flash`;
+}
+
+/* ─────────────────────────────────────────────
+   RESIZE
+───────────────────────────────────────────── */
+window.addEventListener('resize', () => {
+  if (currentSeed) renderRound(currentSeed);
+});
+
+/* ─────────────────────────────────────────────
+   START
+───────────────────────────────────────────── */
+init();
+</script>
+</body>
+</html>
