@@ -522,6 +522,7 @@
 
   <div id="canvas-wrap">
     <canvas id="game-canvas"></canvas>
+    <div id="hardcore-banner" style="display:none;position:absolute;top:0;left:0;right:0;height:36px;background:rgba(200,0,0,0.18);border-bottom:1px solid rgba(255,50,50,0.35);align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:0.25em;color:#ff3333;z-index:6;text-shadow:0 0 12px rgba(255,0,0,0.6);">⚠ HARDCORE MODE — 18s ⚠</div>
     <div id="question-text">HOW MANY <strong id="shape-name-q">—</strong>?</div>
 
     <!-- Overlays -->
@@ -547,8 +548,8 @@
             <span class="sd-key">Time (ms)</span>
           </div>
           <div class="score-detail">
-            <span class="sd-val" id="sd-correct">—</span>
-            <span class="sd-key">Correct</span>
+            <span class="sd-val" id="sd-str">—</span>
+            <span class="sd-key" title="Shapes per second (shapes ÷ reaction time)">STR <span style="opacity:0.5;font-size:0.85em">shapes/s</span></span>
           </div>
         </div>
         <div class="next-label">NEXT ROUND IN <span id="next-countdown">—</span>s</div>
@@ -563,7 +564,7 @@
     </div>
 
     <div id="countdown-overlay" class="hidden">
-      <div id="countdown-number">5</div>
+      <div id="countdown-number">3</div>
     </div>
   </div>
 
@@ -573,7 +574,7 @@
       <strong id="shape-hint-name">—</strong>
     </div>
     <span id="submitted-tag">✓ SUBMITTED</span>
-    <input type="number" id="answer-input" min="5" max="20" placeholder="?" autocomplete="off">
+    <input type="number" id="answer-input" min="1" max="30" placeholder="?" autocomplete="off">
     <button id="submit-btn">SUBMIT</button>
   </div>
 </main>
@@ -595,49 +596,91 @@ function mulberry32(seed) {
 
 /* ─────────────────────────────────────────────
    TIMING CONSTANTS
-   Cycle is always 35s (fixed boundary = same seed for everyone).
-   Play window: 10s for <=10 shapes, 20s for >10 shapes.
-   Score: 10s. Countdown: 5s.
 ───────────────────────────────────────────── */
-const PLAY_DURATION_SHORT = 10000; // <=10 shapes
-const PLAY_DURATION_LONG  = 20000; // >10 shapes
-const SCORE_DURATION      = 10000;
-const COUNT_DURATION      = 5000;
-const CYCLE_DURATION = PLAY_DURATION_LONG + SCORE_DURATION + COUNT_DURATION; // 35s
+const SCORE_DURATION = 10000; // 10s results
+const COUNT_DURATION = 3000;  // 3s countdown
+// Anchor: game epoch. All clients share this fixed start point.
+const ANCHOR = new Date('2026-05-27T00:00:00Z').getTime();
 
-/* ─────────────────────────────────────────────
-   SEED CALCULATION
-───────────────────────────────────────────── */
-function getCurrentSeed() {
-  return Math.floor(Date.now() / CYCLE_DURATION);
+function getPlayDurationForCount(c) {
+  if (c <= 5)  return 3000;
+  if (c <= 10) return 5000;
+  if (c <= 20) return 10000;
+  return 20000;
 }
 
 function getPlayDuration(seed) {
   const p = getRoundParams(seed);
-  return p.count > 10 ? PLAY_DURATION_LONG : PLAY_DURATION_SHORT;
+  if (p.hardcore) return 18000;
+  return getPlayDurationForCount(p.count);
+}
+
+function getCycleDuration(seed) {
+  const p = getRoundParams(seed);
+  const play = p.hardcore ? 18000 : getPlayDurationForCount(p.count);
+  return play + SCORE_DURATION + COUNT_DURATION;
+}
+
+/* ─────────────────────────────────────────────
+   SEED / CYCLE CACHE
+   Bootstrap once on load, then advance cheaply each tick.
+───────────────────────────────────────────── */
+let _cSeed = 0;
+let _cStart = ANCHOR;
+
+function _bootstrapCycle() {
+  const now = Date.now();
+  _cSeed = 0;
+  _cStart = ANCHOR;
+  let prevHC = false;
+  // O(N) walk: pass prevHardcore explicitly so getRoundParams never recurses
+  while (true) {
+    const p = getRoundParams(_cSeed, prevHC);
+    _seedCache.set(_cSeed, p);
+    const dur = p.hardcore ? 18000 : getPlayDurationForCount(p.count);
+    const cycleDur = dur + SCORE_DURATION + COUNT_DURATION;
+    if (_cStart + cycleDur > now) break;
+    _cStart += cycleDur;
+    prevHC = p.hardcore;
+    _cSeed++;
+  }
+}
+
+function getCurrentSeedAndCycle() {
+  const now = Date.now();
+  // Advance cache forward if cycle has ended
+  while (_cStart + getCycleDuration(_cSeed) <= now) {
+    _cStart += getCycleDuration(_cSeed);
+    _cSeed++;
+  }
+  return { seed: _cSeed, cycleStart: _cStart, cycleDur: getCycleDuration(_cSeed) };
+}
+
+function getCurrentSeed() {
+  return getCurrentSeedAndCycle().seed;
 }
 
 function getPhaseInfo(seed) {
+  const { cycleStart, cycleDur } = getCurrentSeedAndCycle();
   const now = Date.now();
-  const cycleStart = Math.floor(now / CYCLE_DURATION) * CYCLE_DURATION;
   const elapsed = now - cycleStart;
-  const playDur = (seed != null) ? getPlayDuration(seed) : PLAY_DURATION_LONG;
+  const playDur = getPlayDuration(seed);
 
   if (elapsed < playDur) {
-    return { phase: 'play', elapsed, timeLeft: playDur - elapsed, playDur };
-  } else if (elapsed < PLAY_DURATION_LONG + SCORE_DURATION) {
-    const scoreElapsed = elapsed - PLAY_DURATION_LONG;
-    return { phase: 'score', elapsed: scoreElapsed, timeLeft: SCORE_DURATION - scoreElapsed, playDur };
+    return { phase: 'play', elapsed, timeLeft: playDur - elapsed, playDur, cycleStart };
+  } else if (elapsed < playDur + SCORE_DURATION) {
+    const se = elapsed - playDur;
+    return { phase: 'score', elapsed: se, timeLeft: SCORE_DURATION - se, playDur, cycleStart };
   } else {
-    const cntElapsed = elapsed - PLAY_DURATION_LONG - SCORE_DURATION;
-    return { phase: 'countdown', elapsed: cntElapsed, timeLeft: COUNT_DURATION - cntElapsed, playDur };
+    const ce = elapsed - playDur - SCORE_DURATION;
+    return { phase: 'countdown', elapsed: ce, timeLeft: COUNT_DURATION - ce, playDur, cycleStart };
   }
 }
 
 /* ─────────────────────────────────────────────
    ROUND PARAMETERS from seed
 ───────────────────────────────────────────── */
-const SHAPE_TYPES = ['square','circle','triangle','star','oval','number','letter'];
+const SHAPE_TYPES = ['square','circle','triangle','star','oval','number','letter','star9','diamond','heart','number67','smiley'];
 const LAYOUT_TYPES = ['scattered','grid','line'];
 
 const COLORS = [
@@ -649,25 +692,88 @@ const COLORS = [
 const NUMBERS = ['3','6','7','8','9'];
 const LETTERS = ['A','B','E','F','G','H','K','M','N','P','R','S','T','W'];
 
-function getRoundParams(seed) {
+// Cache of {hardcore} per seed so prevHardcore lookup is O(1)
+const _seedCache = new Map();
+
+function getRoundParams(seed, _prevHardcoreOverride) {
+  // Use cache if available (and no override forcing a recompute)
+  if (_seedCache.has(seed) && _prevHardcoreOverride === undefined) {
+    return _seedCache.get(seed);
+  }
+
   const rng = mulberry32(seed);
   const shapeType = SHAPE_TYPES[Math.floor(rng() * SHAPE_TYPES.length)];
-  const count = 5 + Math.floor(rng() * 16); // 5-20
+  const count = 1 + Math.floor(rng() * 30); // 1-30
   const layout = LAYOUT_TYPES[Math.floor(rng() * LAYOUT_TYPES.length)];
 
-  // Color mode: 0=all same color, 1=all same color(2/3 chance each), 2=multi
+  // Color mode: single (2/3 chance) or multi
   const colorMode = rng() < 0.33 ? 'multi' : 'single';
   const primaryColor = COLORS[Math.floor(rng() * COLORS.length)];
 
-  // For number/letter pick which one
+  // For number/letter pick which one — MUST consume rng in same order always
   let charValue = null;
-  if (shapeType === 'number') charValue = NUMBERS[Math.floor(rng() * NUMBERS.length)];
-  if (shapeType === 'letter') charValue = LETTERS[Math.floor(rng() * LETTERS.length)];
+  if (shapeType === 'number') { charValue = NUMBERS[Math.floor(rng() * NUMBERS.length)]; }
+  else if (shapeType === 'letter') { charValue = LETTERS[Math.floor(rng() * LETTERS.length)]; }
+  else if (shapeType === 'number67') { charValue = '67'; }
+  else if (shapeType === 'smiley') { charValue = ':)'; }
 
   // Size variation
-  const baseSize = 24 + Math.floor(rng() * 32); // 24-56px
+  const baseSize = 18 + Math.floor(rng() * 28); // 18-46px (smaller to fit 30)
 
-  return { shapeType, count, layout, colorMode, primaryColor, charValue, baseSize, rng };
+  // Pre-generate all per-shape colors from seed so every client gets identical colors
+  const shapeColors = [];
+  const colorRng = mulberry32(seed * 99991 + 7);
+  for (let i = 0; i < count; i++) {
+    shapeColors.push(colorMode === 'single' ? primaryColor : COLORS[Math.floor(colorRng() * COLORS.length)]);
+  }
+
+  // Hardcore: prevHardcore comes from cache or override (never recursive)
+  let prevHardcore;
+  if (_prevHardcoreOverride !== undefined) {
+    prevHardcore = _prevHardcoreOverride;
+  } else if (seed === 0) {
+    prevHardcore = false;
+  } else if (_seedCache.has(seed - 1)) {
+    prevHardcore = _seedCache.get(seed - 1).hardcore;
+  } else {
+    // Fallback: compute prev without recursion by re-running just the hardcore roll
+    // We do a lightweight check — call self with override=false for seed-1
+    prevHardcore = getRoundParams(seed - 1, false).hardcore;
+  }
+  rng(); // consume hardcoreRoll slot to keep rng sequence stable
+  const hardcore = !prevHardcore && (seed % 7 === 6);
+
+  // Override count and use fixed colors in hardcore
+  const finalCount = hardcore ? (10 + Math.floor(rng() * 11)) : count; // 10-20
+  const hardcoreColors = [];
+  if (hardcore) {
+    const hcColorRng = mulberry32(seed * 77777 + 13);
+    for (let i = 0; i < finalCount; i++) {
+      hardcoreColors.push(colorMode === 'single' ? primaryColor : COLORS[Math.floor(hcColorRng() * COLORS.length)]);
+    }
+  }
+
+  const finalShapeColors = hardcore ? hardcoreColors : shapeColors.slice(0, finalCount);
+
+  // Seeded per-shape orbit params for animation (used only in hardcore)
+  const orbitRng = mulberry32(seed * 55555 + 3);
+  const orbitParams = [];
+  for (let i = 0; i < finalCount; i++) {
+    orbitParams.push({
+      radius: 6 + orbitRng() * 10,        // orbit circle radius px
+      speed: 0.6 + orbitRng() * 1.2,       // radians/second
+      phase: orbitRng() * Math.PI * 2,     // starting angle
+      dir: orbitRng() < 0.5 ? 1 : -1      // CW or CCW
+    });
+  }
+
+  const result = {
+    shapeType, count: finalCount, layout, colorMode, primaryColor,
+    charValue, baseSize, shapeColors: finalShapeColors,
+    hardcore, orbitParams
+  };
+  _seedCache.set(seed, result);
+  return result;
 }
 
 /* ─────────────────────────────────────────────
@@ -680,11 +786,6 @@ function resizeCanvas() {
   const wrap = document.getElementById('canvas-wrap');
   canvas.width = wrap.clientWidth;
   canvas.height = wrap.clientHeight;
-}
-
-function getShapeColor(params, rng) {
-  if (params.colorMode === 'single') return params.primaryColor;
-  return COLORS[Math.floor(rng() * COLORS.length)];
 }
 
 function drawShape(ctx, type, x, y, size, color, charValue) {
@@ -734,11 +835,67 @@ function drawShape(ctx, type, x, y, size, color, charValue) {
 
     case 'number':
     case 'letter':
+    case 'number67':
       ctx.font = `bold ${size}px 'Bebas Neue', monospace`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(charValue, x, y);
       break;
+
+    case 'smiley':
+      ctx.font = `bold ${Math.round(size * 0.9)}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(':)', x, y);
+      break;
+
+    case 'star9': {
+      // 9-pointed star: 18 vertices alternating outer/inner
+      const outerR9 = size / 2, innerR9 = size / 4;
+      ctx.beginPath();
+      for (let i = 0; i < 18; i++) {
+        const r = i % 2 === 0 ? outerR9 : innerR9;
+        const angle = (i * Math.PI / 9) - Math.PI / 2;
+        if (i === 0) ctx.moveTo(x + r * Math.cos(angle), y + r * Math.sin(angle));
+        else ctx.lineTo(x + r * Math.cos(angle), y + r * Math.sin(angle));
+      }
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+
+    case 'diamond': {
+      const hw = size * 0.42, hh = size * 0.56;
+      ctx.beginPath();
+      ctx.moveTo(x, y - hh);
+      ctx.lineTo(x + hw, y);
+      ctx.lineTo(x, y + hh);
+      ctx.lineTo(x - hw, y);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+
+    case 'heart': {
+      const hs = size * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(x, y + hs * 0.9);
+      // left curve
+      ctx.bezierCurveTo(
+        x - hs * 1.2, y + hs * 0.3,
+        x - hs * 1.4, y - hs * 0.6,
+        x, y - hs * 0.2
+      );
+      // right curve
+      ctx.bezierCurveTo(
+        x + hs * 1.4, y - hs * 0.6,
+        x + hs * 1.2, y + hs * 0.3,
+        x, y + hs * 0.9
+      );
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
   }
 }
 
@@ -810,15 +967,27 @@ function computePositions(layout, count, canvasW, canvasH, baseSize, rng) {
 let currentPositions = [];
 let currentParams = null;
 
-function renderRound(seed) {
+let _hardcoreAnimId = null;
+
+function stopHardcoreAnim() {
+  if (_hardcoreAnimId) { cancelAnimationFrame(_hardcoreAnimId); _hardcoreAnimId = null; }
+}
+
+function setHardcoreUI(on) {
+  document.documentElement.style.setProperty('--text', on ? '#ff3333' : '#f0f0f8');
+  document.documentElement.style.setProperty('--muted', on ? '#cc2222' : '#666688');
+  document.documentElement.style.setProperty('--accent3', on ? '#ff6666' : '#47c8ff');
+  document.documentElement.style.setProperty('--accent', on ? '#ff2222' : '#e8ff47');
+  const hb = document.getElementById('hardcore-banner');
+  if (hb) hb.style.display = on ? 'flex' : 'none';
+}
+
+function drawFrame(params, positions, t) {
   resizeCanvas();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const params = getRoundParams(seed);
-  currentParams = params;
-
-  // Draw subtle bg grid
-  ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+  // bg grid
+  ctx.strokeStyle = params.hardcore ? 'rgba(255,40,40,0.06)' : 'rgba(255,255,255,0.025)';
   ctx.lineWidth = 1;
   const gridSize = 40;
   for (let x = 0; x < canvas.width; x += gridSize) {
@@ -828,28 +997,62 @@ function renderRound(seed) {
     ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
   }
 
-  // Position RNG is separate so color RNG can follow
+  for (let i = 0; i < positions.length; i++) {
+    const base = positions[i];
+    let px = base.x, py = base.y;
+    if (params.hardcore) {
+      const o = params.orbitParams[i];
+      const angle = o.phase + o.dir * o.speed * t;
+      px += Math.cos(angle) * o.radius;
+      py += Math.sin(angle) * o.radius;
+    }
+    const color = params.shapeColors[i];
+    ctx.shadowColor = color;
+    ctx.shadowBlur = params.hardcore ? 18 : 12;
+    drawShape(ctx, params.shapeType, px, py, params.baseSize, color, params.charValue);
+    ctx.shadowBlur = 0;
+  }
+}
+
+function renderRound(seed) {
+  stopHardcoreAnim();
+
+  const params = getRoundParams(seed);
+  currentParams = params;
+
+  resizeCanvas();
+
+  // Position RNG is seeded separately for determinism
   const posRng = mulberry32(seed * 31337 + 1);
   const positions = computePositions(params.layout, params.count, canvas.width, canvas.height, params.baseSize, posRng);
   currentPositions = positions;
 
-  const colorRng = mulberry32(seed * 99991 + 7);
+  setHardcoreUI(params.hardcore);
 
-  for (const pos of positions) {
-    const color = getShapeColor(params, colorRng);
-    // Subtle shadow
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 12;
-    drawShape(ctx, params.shapeType, pos.x, pos.y, params.baseSize, color, params.charValue);
-    ctx.shadowBlur = 0;
+  if (params.hardcore) {
+    // Animated loop
+    const startTime = performance.now();
+    function loop() {
+      const t = (performance.now() - startTime) / 1000;
+      drawFrame(params, positions, t);
+      _hardcoreAnimId = requestAnimationFrame(loop);
+    }
+    loop();
+  } else {
+    drawFrame(params, positions, 0);
   }
 
   // Update UI labels
-  const shapeName = params.shapeType === 'number'
-    ? `the number ${params.charValue}`
-    : params.shapeType === 'letter'
-    ? `the letter ${params.charValue}`
-    : `${params.shapeType}s`;
+  const shapeDisplayNames = {
+    square: 'squares', circle: 'circles', triangle: 'triangles',
+    star: 'stars', oval: 'ovals', star9: '9-pointed stars',
+    diamond: 'diamonds', heart: 'hearts',
+    number: `the number ${params.charValue}`,
+    letter: `the letter ${params.charValue}`,
+    number67: 'the number 67',
+    smiley: 'smiley faces'
+  };
+  const shapeName = shapeDisplayNames[params.shapeType] || params.shapeType;
 
   document.getElementById('shape-name-q').textContent = shapeName.toUpperCase();
   document.getElementById('shape-hint-name').textContent = shapeName.toUpperCase();
@@ -899,7 +1102,7 @@ function fmtMs(ms) {
 function tick() {
   const seed = getCurrentSeed();
   const info = getPhaseInfo(seed);
-  const cycleStart = Math.floor(Date.now() / CYCLE_DURATION) * CYCLE_DURATION;
+  const cycleStart = info.cycleStart;
 
   $('seed-display').textContent = `SEED: ${seed}`;
   $('round-badge').textContent = `ROUND ${seed % 9999 + 1}`;
@@ -909,12 +1112,13 @@ function tick() {
     const progress = 1 - info.elapsed / info.playDur;
     $('progress-bar').style.width = (progress * 100) + '%';
     $('timer-display').textContent = (info.timeLeft / 1000).toFixed(1) + 's';
-    $('phase-name').textContent = info.playDur === PLAY_DURATION_LONG ? 'PLAY — 20s' : 'PLAY — 10s';
+    const hcParams = getRoundParams(seed);
+    $('phase-name').textContent = (hcParams.hardcore ? '🔴 HARDCORE — ' : 'PLAY — ') + (info.playDur / 1000) + 's';
 
     if (seed !== currentSeed) {
       // New round started — reset
       currentSeed = seed;
-      roundStartEpoch = cycleStart;
+      roundStartEpoch = info.cycleStart;
       playerAnswer = null;
       playerAnswerTime = null;
       $('answer-input').value = '';
@@ -935,7 +1139,6 @@ function tick() {
     if (playerState === 'missed') {
       // Show missed overlay with time left in cycle
       const totalLeft = info.timeLeft + SCORE_DURATION + COUNT_DURATION;
-      // (score phase starts at PLAY_DURATION_LONG boundary)
       showOnly('missed-overlay');
       $('missed-wait').textContent = Math.ceil(totalLeft / 1000);
       $('missed-next-label').textContent = 'SECONDS UNTIL NEXT ROUND';
@@ -951,12 +1154,19 @@ function tick() {
 
     if (playerState === 'playing' || playerState === 'submitted') {
       // Reveal score
+      stopHardcoreAnim();
+      setHardcoreUI(false);
       playerState = 'score';
       const params = currentParams || getRoundParams(seed);
       const correctAnswer = params.count;
 
       $('answer-reveal').textContent = correctAnswer;
-      $('sd-correct').textContent = correctAnswer;
+
+      // STR = shapes per second of reaction time (only when correct + answered)
+      function calcSTR(count, ms) {
+        if (!ms || ms <= 0) return null;
+        return (count / (ms / 1000)).toFixed(2);
+      }
 
       if (playerAnswer === null) {
         // Time ran out
@@ -964,17 +1174,21 @@ function tick() {
         $('result-text').textContent = "Time's up — you didn't answer!";
         $('sd-your').textContent = '—';
         $('sd-time').textContent = '—';
+        $('sd-str').textContent = '—';
       } else if (parseInt(playerAnswer) === correctAnswer) {
         $('answer-reveal').className = 'answer-reveal correct';
         $('result-text').textContent = '✓ Correct! Well done.';
         $('sd-your').textContent = playerAnswer;
         $('sd-time').innerHTML = fmtMs(playerAnswerTime);
+        const str = calcSTR(correctAnswer, playerAnswerTime);
+        $('sd-str').innerHTML = str + '<span style="font-size:0.5em;opacity:0.75;letter-spacing:0.04em"> /s</span>';
         triggerFlash('correct');
       } else {
         $('answer-reveal').className = 'answer-reveal wrong';
         $('result-text').textContent = `✗ Wrong — you said ${playerAnswer}.`;
         $('sd-your').textContent = playerAnswer;
         $('sd-time').innerHTML = playerAnswerTime ? fmtMs(playerAnswerTime) : '—';
+        $('sd-str').textContent = '—';
         triggerFlash('wrong');
       }
       showOnly('score-overlay');
@@ -1009,6 +1223,7 @@ function tick() {
 }
 
 function init() {
+  _bootstrapCycle();
   resizeCanvas();
 
   const seed = getCurrentSeed();
@@ -1036,7 +1251,7 @@ function init() {
     setInputLocked(true);
   } else {
     // Beginning of play phase or very first tick
-    roundStartEpoch = Math.floor(Date.now() / CYCLE_DURATION) * CYCLE_DURATION;
+    roundStartEpoch = getCurrentSeedAndCycle().cycleStart;
     renderRound(seed);
     showOnly(null);
     setInputLocked(false);
@@ -1054,7 +1269,7 @@ function init() {
 function submitAnswer() {
   if (playerState !== 'playing') return;
   const val = parseInt($('answer-input').value);
-  if (isNaN(val) || val < 5 || val > 20) {
+  if (isNaN(val) || val < 1 || val > 30) {
     $('answer-input').style.borderColor = 'var(--accent2)';
     setTimeout(() => $('answer-input').style.borderColor = '', 500);
     return;
@@ -1062,8 +1277,8 @@ function submitAnswer() {
 
   playerAnswer = val;
   const now = Date.now();
-  const cycleStart = Math.floor(now / CYCLE_DURATION) * CYCLE_DURATION;
-  playerAnswerTime = now - cycleStart;
+  const { cycleStart: cs } = getCurrentSeedAndCycle();
+  playerAnswerTime = now - cs;
 
   playerState = 'submitted';
   setInputLocked(true);
@@ -1074,6 +1289,22 @@ $('submit-btn').addEventListener('click', submitAnswer);
 $('answer-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') submitAnswer();
 });
+
+// Aggressively steal focus into the input whenever the player can answer
+document.addEventListener('keydown', e => {
+  if (playerState !== 'playing') return;
+  const inp = $('answer-input');
+  if (document.activeElement !== inp) {
+    inp.focus();
+  }
+});
+
+// Poll focus steal every 200ms as a fallback
+setInterval(() => {
+  if (playerState === 'playing' && document.activeElement !== $('answer-input')) {
+    $('answer-input').focus();
+  }
+}, 200);
 
 /* ─────────────────────────────────────────────
    FLASH EFFECT
