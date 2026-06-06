@@ -521,6 +521,41 @@
 </div>
 
 
+<!-- ── Secret Edit Modal (Ctrl+Shift+V) ── -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <h2>Edit Task</h2>
+    <div class="form-group">
+      <label for="edit-task-select">Select task</label>
+      <select id="edit-task-select" onchange="loadTaskIntoEdit(this.value)">
+        <option value="">— pick a task —</option>
+      </select>
+    </div>
+    <div id="edit-fields" style="display:none;">
+      <div class="form-group">
+        <label for="edit-title">Title</label>
+        <input type="text" id="edit-title" maxlength="100" />
+      </div>
+      <div class="form-group">
+        <label for="edit-desc">What to do</label>
+        <textarea id="edit-desc"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="edit-priority">Priority</label>
+        <select id="edit-priority">
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeEditModal()">Cancel</button>
+      <button class="btn-primary" id="edit-save-btn" style="display:none;" onclick="saveEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
   /* ── Password gate ── */
   const CORRECT_HASH = '9a900403ac313ba27a1bc81f0932652b8020dac92c234d98fa0b06bf0040ecfd';
@@ -773,10 +808,85 @@
   document.getElementById('add-modal').addEventListener('click', function(e) {
     if (e.target === this) closeAddModal();
   });
+  document.getElementById('edit-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditModal();
+  });
 
   /* ── Enter in title field submits ── */
   document.getElementById('task-title-input').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') addTask();
+  });
+
+  /* ── Secret edit modal ── */
+  let editingId = null;
+
+  function openEditModal() {
+    const sel = document.getElementById('edit-task-select');
+    sel.innerHTML = '<option value="">— pick a task —</option>';
+    const sorted = [...tasks].sort((a, b) => {
+      if (!!a.completedAt !== !!b.completedAt) return a.completedAt ? 1 : -1;
+      return a.title.localeCompare(b.title);
+    });
+    if (sorted.length === 0) { showToast('No tasks to edit.'); return; }
+    sorted.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = (t.completedAt ? '[done] ' : '') + t.title;
+      sel.appendChild(opt);
+    });
+    sel.value = '';
+    document.getElementById('edit-fields').style.display = 'none';
+    document.getElementById('edit-save-btn').style.display = 'none';
+    editingId = null;
+    document.getElementById('edit-modal').classList.add('open');
+  }
+
+  function closeEditModal() {
+    document.getElementById('edit-modal').classList.remove('open');
+    editingId = null;
+  }
+
+  function loadTaskIntoEdit(id) {
+    if (!id) {
+      document.getElementById('edit-fields').style.display = 'none';
+      document.getElementById('edit-save-btn').style.display = 'none';
+      editingId = null;
+      return;
+    }
+    id = parseInt(id, 10);
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    editingId = id;
+    document.getElementById('edit-title').value    = task.title;
+    document.getElementById('edit-desc').value     = task.desc || '';
+    document.getElementById('edit-priority').value = task.priority;
+    document.getElementById('edit-fields').style.display = 'block';
+    document.getElementById('edit-save-btn').style.display = 'inline-block';
+  }
+
+  function saveEdit() {
+    if (!editingId) return;
+    const title = document.getElementById('edit-title').value.trim();
+    if (!title) { document.getElementById('edit-title').focus(); return; }
+    patchTask(editingId, {
+      title:    title,
+      desc:     document.getElementById('edit-desc').value.trim(),
+      priority: document.getElementById('edit-priority').value
+    });
+    showToast('✏️ Task updated');
+    closeEditModal();
+  }
+
+  /* ── Ctrl+Shift+V shortcut ── */
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.shiftKey && e.key === 'V') {
+      e.preventDefault();
+      if (document.getElementById('edit-modal').classList.contains('open')) {
+        closeEditModal();
+      } else {
+        openEditModal();
+      }
+    }
   });
 </script>
 </body>
