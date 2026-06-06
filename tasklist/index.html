@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Task List</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ── CSS Variables ── */
+    :root {
+      --bg:        #f5f5f5;
+      --surface:   #ffffff;
+      --border:    #e0e0e0;
+      --text:      #212121;
+      --text-sec:  #616161;
+      --text-mute: #9e9e9e;
+      --title:     #424242;
+      --btn-ghost-color: #616161;
+      --btn-ghost-border: #bdbdbd;
+      --btn-ghost-hover: #eeeeee;
+      --btn-sec-bg: #fff;
+      --input-bg:  #fff;
+      --shadow:    rgba(0,0,0,0.15);
+    }
+
+    body.dark {
+      --bg:        #121212;
+      --surface:   #1e1e1e;
+      --border:    #333333;
+      --text:      #e0e0e0;
+      --text-sec:  #aaaaaa;
+      --text-mute: #666666;
+      --title:     #cccccc;
+      --btn-ghost-color: #aaaaaa;
+      --btn-ghost-border: #444444;
+      --btn-ghost-hover: #2a2a2a;
+      --btn-sec-bg: #1e1e1e;
+      --input-bg:  #2a2a2a;
+      --shadow:    rgba(0,0,0,0.5);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 500;
+      margin-right: 2px;
+    }
+
+    .header-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    /* ── Dark mode toggle ── */
+    .dark-toggle {
+      background: var(--btn-ghost-hover);
+      border: 1px solid var(--btn-ghost-border);
+      color: var(--text);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-family: 'Roboto', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+    .dark-toggle:hover { filter: brightness(0.92); }
+
+    /* ── Buttons ── */
+    button {
+      font-family: 'Roboto', sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 16px;
+    }
+
+    .btn-primary { background: #1976d2; color: #fff; }
+    .btn-primary:hover { background: #1565c0; }
+
+    .btn-secondary {
+      background: var(--btn-sec-bg);
+      color: #1976d2;
+      border: 1px solid #1976d2;
+    }
+    .btn-secondary:hover { background: #e3f2fd; }
+    body.dark .btn-secondary:hover { background: #1a2a3a; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--btn-ghost-color);
+      border: 1px solid var(--btn-ghost-border);
+    }
+    .btn-ghost:hover { background: var(--btn-ghost-hover); }
+
+    /* ── Main ── */
+    main {
+      max-width: 720px;
+      margin: 32px auto;
+      padding: 0 16px 80px;
+    }
+
+    .view-title {
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      color: var(--title);
+    }
+
+    .empty-state {
+      text-align: center;
+      color: var(--text-mute);
+      padding: 48px 0;
+      font-size: 15px;
+    }
+
+    /* ── Task cards ── */
+    .task-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .task-priority-bar {
+      width: 4px;
+      min-height: 48px;
+      align-self: stretch;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .priority-high   { background: #e53935; }
+    .priority-medium { background: #fb8c00; }
+    .priority-low    { background: #43a047; }
+
+    .task-body { flex: 1; }
+
+    .task-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .task-title { font-size: 15px; font-weight: 500; }
+
+    .task-badge {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .badge-high   { background: #ffebee; color: #c62828; }
+    .badge-medium { background: #fff3e0; color: #e65100; }
+    .badge-low    { background: #e8f5e9; color: #2e7d32; }
+
+    body.dark .badge-high   { background: #3b1212; color: #ef9a9a; }
+    body.dark .badge-medium { background: #3b2500; color: #ffcc80; }
+    body.dark .badge-low    { background: #0f2b10; color: #a5d6a7; }
+
+    .task-desc {
+      font-size: 13px;
+      color: var(--text-sec);
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .task-meta {
+      font-size: 12px;
+      color: var(--text-mute);
+      margin-top: 6px;
+    }
+
+    .task-actions { flex-shrink: 0; display: flex; gap: 6px; align-items: center; }
+
+    /* Per-task action buttons hidden until mode is active */
+    .btn-task-delete,
+    .btn-task-reactivate {
+      font-size: 13px;
+      padding: 5px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Roboto', sans-serif;
+    }
+
+    .btn-task-delete {
+      display: none;
+      background: transparent;
+      color: #c62828;
+      border: 1px solid #ef9a9a;
+    }
+    .btn-task-delete:hover { background: #ffebee; }
+    body.dark .btn-task-delete:hover { background: #3b1212; }
+
+    .btn-task-reactivate {
+      background: transparent;
+      color: #1565c0;
+      border: 1px solid #90caf9;
+    }
+    .btn-task-reactivate:hover { background: #e3f2fd; }
+    body.dark .btn-task-reactivate:hover { background: #1a2a3a; }
+
+    body.mode-delete   .btn-task-delete    { display: inline-block; }
+
+    /* Subtle card highlight when in a mode */
+    body.mode-delete .task-card:hover,
+    body.mode-reactivate .task-card:hover {
+      border-color: var(--btn-ghost-border);
+    }
+
+    .btn-fab-cancel {
+      background: transparent;
+      color: var(--btn-ghost-color);
+      border: 1px solid var(--btn-ghost-border);
+      border-radius: 4px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-family: 'Roboto', sans-serif;
+      cursor: pointer;
+    }
+    .btn-fab-cancel:hover { background: var(--btn-ghost-hover); }
+
+    .btn-complete {
+      background: transparent;
+      color: #388e3c;
+      border: 1px solid #a5d6a7;
+      font-size: 13px;
+      padding: 5px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Roboto', sans-serif;
+    }
+    .btn-complete:hover { background: #e8f5e9; }
+    body.dark .btn-complete:hover { background: #0f2b10; }
+
+    .task-title-done {
+      text-decoration: line-through;
+      color: var(--text-mute);
+    }
+
+    .btn-outline-danger {
+      background: transparent;
+      color: #c62828;
+      border: 1px solid #c62828;
+      border-radius: 4px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-family: 'Roboto', sans-serif;
+      cursor: pointer;
+    }
+    .btn-outline-danger:hover { background: #ffebee; }
+    body.dark .btn-outline-danger:hover { background: #3b1212; }
+
+    /* ── Floating action button (bottom-left) ── */
+    #fab-action {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+      display: none;
+    }
+
+    /* ── Modals ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 28px 28px 20px;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: 0 8px 32px var(--shadow);
+    }
+
+    .modal h2 {
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 20px;
+      color: var(--text);
+    }
+
+    .form-group { margin-bottom: 16px; }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--title);
+      margin-bottom: 6px;
+    }
+
+    input[type="text"],
+    textarea,
+    select {
+      font-family: 'Roboto', sans-serif;
+      font-size: 14px;
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--input-bg);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]:focus,
+    textarea:focus,
+    select:focus { border-color: #1976d2; }
+
+    textarea { resize: vertical; min-height: 90px; }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .error-msg {
+      font-size: 12px;
+      color: #c62828;
+      margin-top: 4px;
+      display: none;
+    }
+
+    /* ── Toast notification ── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #323232;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+      z-index: 200;
+      white-space: nowrap;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    /* ── Password gate ── */
+    #password-gate {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #password-gate.hidden { display: none; }
+
+    .gate-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 36px 32px 28px;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 8px 32px var(--shadow);
+      text-align: center;
+    }
+    .gate-box h2 {
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+    .gate-box p {
+      font-size: 13px;
+      color: var(--text-mute);
+      margin-bottom: 20px;
+    }
+    .gate-box input[type="password"] {
+      font-family: 'Roboto', sans-serif;
+      font-size: 14px;
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--input-bg);
+      color: var(--text);
+      outline: none;
+      margin-bottom: 10px;
+      transition: border-color 0.15s;
+    }
+    .gate-box input[type="password"]:focus { border-color: #1976d2; }
+    .gate-box button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 2px;
+    }
+    .gate-error {
+      font-size: 12px;
+      color: #c62828;
+      margin-bottom: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Password gate ── -->
+<div id="password-gate">
+  <div class="gate-box">
+    <h2>Task List</h2>
+    <p>Enter the password to continue</p>
+    <input type="password" id="gate-input" placeholder="Password" />
+    <div class="gate-error" id="gate-error">Wrong password. Try again.</div>
+    <button class="btn-primary" onclick="checkPassword()">Unlock</button>
+  </div>
+</div>
+
+<header>
+  <div class="header-left">
+    <h1>Task List</h1>
+    <button class="dark-toggle" id="dark-btn" onclick="toggleDark()">☀️ Light</button>
+  </div>
+  <div class="header-right">
+    <button class="btn-primary" id="toggle-view-btn" onclick="toggleView()">View Completed</button>
+    <button class="btn-primary" id="add-task-btn" onclick="openAddModal()">+ Add Task</button>
+  </div>
+</header>
+
+<main>
+  <div id="active-view">
+    <div class="view-title">Active Tasks</div>
+    <div id="active-list"></div>
+  </div>
+  <div id="completed-view" style="display:none;">
+    <div class="view-title">Completed Tasks</div>
+    <div id="completed-list"></div>
+  </div>
+</main>
+
+<!-- Floating Action Button (bottom-left) -->
+<button id="fab-action" class="btn-outline-danger" onclick="fabClick()">🗑 Delete a Task</button>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ── Add Task Modal ── -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <h2>New Task</h2>
+    <div class="form-group">
+      <label for="task-title-input">Title</label>
+      <input type="text" id="task-title-input" placeholder="Task title" maxlength="100" />
+      <div class="error-msg" id="title-error">Please enter a title.</div>
+    </div>
+    <div class="form-group">
+      <label for="task-desc-input">What to do</label>
+      <textarea id="task-desc-input" placeholder="Describe what needs to be done…"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="task-priority-input">Priority</label>
+      <select id="task-priority-input">
+        <option value="high">High</option>
+        <option value="medium" selected>Medium</option>
+        <option value="low">Low</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeAddModal()">Cancel</button>
+      <button class="btn-primary" onclick="addTask()">Add Task</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  /* ── Password gate ── */
+  const CORRECT_HASH = '9a900403ac313ba27a1bc81f0932652b8020dac92c234d98fa0b06bf0040ecfd';
+
+  async function hashPassword(pw) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function checkPassword() {
+    const input = document.getElementById('gate-input').value;
+    const hash  = await hashPassword(input);
+    if (hash === CORRECT_HASH) {
+      localStorage.setItem('auth', '1');
+      document.getElementById('password-gate').classList.add('hidden');
+    } else {
+      document.getElementById('gate-error').style.display = 'block';
+      document.getElementById('gate-input').value = '';
+      document.getElementById('gate-input').focus();
+    }
+  }
+
+  // Enter key submits
+  document.getElementById('gate-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') checkPassword();
+  });
+
+  // Skip gate if already authenticated
+  if (localStorage.getItem('auth') === '1') {
+    document.getElementById('password-gate').classList.add('hidden');
+  }
+</script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+  /* ── Firebase init ── */
+  const app = firebase.initializeApp({
+    apiKey:            "AIzaSyDFMccIwyJsqDAjj-Cz_t0XAzsUr5-Q9K0",
+    authDomain:        "tasklight-4f0d1.firebaseapp.com",
+    databaseURL:       "https://tasklight-4f0d1-default-rtdb.firebaseio.com",
+    projectId:         "tasklight-4f0d1",
+    storageBucket:     "tasklight-4f0d1.firebasestorage.app",
+    messagingSenderId: "65761024377",
+    appId:             "1:65761024377:web:0336b828ce12c420a077a8"
+  });
+  const db       = firebase.database();
+  const tasksRef = db.ref('tasks');
+
+  /* ── State ── */
+  const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+  let tasks = [];
+  let showingCompleted = false;
+  let fabMode = null;
+  let darkMode = localStorage.getItem('darkMode') !== null
+    ? localStorage.getItem('darkMode') === '1'
+    : true;
+
+  /* ── Dark mode (per-device, stays in localStorage) ── */
+  function applyDark() {
+    document.body.classList.toggle('dark', darkMode);
+    document.getElementById('dark-btn').textContent = darkMode ? '☀️ Light' : '🌙 Dark';
+  }
+  function toggleDark() {
+    darkMode = !darkMode;
+    localStorage.setItem('darkMode', darkMode ? '1' : '0');
+    applyDark();
+  }
+  applyDark();
+
+  /* ── Toast ── */
+  let toastTimer;
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  /* ── Firebase helpers ── */
+  function saveTask(task)        { db.ref('tasks/' + task.id).set(task); }
+  function removeTask(id)        { db.ref('tasks/' + id).remove(); }
+  function patchTask(id, changes){ db.ref('tasks/' + id).update(changes); }
+
+  /* ── Live listener — re-renders on every remote or local change ── */
+  tasksRef.on('value', snapshot => {
+    const data = snapshot.val();
+    tasks = data ? Object.values(data) : [];
+    render();
+  });
+
+  /* ── Add modal ── */
+  function openAddModal() {
+    document.getElementById('task-title-input').value = '';
+    document.getElementById('task-desc-input').value  = '';
+    document.getElementById('task-priority-input').value = 'medium';
+    document.getElementById('title-error').style.display = 'none';
+    document.getElementById('add-modal').classList.add('open');
+    setTimeout(() => document.getElementById('task-title-input').focus(), 50);
+  }
+  function closeAddModal() {
+    document.getElementById('add-modal').classList.remove('open');
+  }
+  function addTask() {
+    const title    = document.getElementById('task-title-input').value.trim();
+    const desc     = document.getElementById('task-desc-input').value.trim();
+    const priority = document.getElementById('task-priority-input').value;
+    if (!title) {
+      document.getElementById('title-error').style.display = 'block';
+      document.getElementById('task-title-input').focus();
+      return;
+    }
+    saveTask({ id: Date.now(), title, desc, priority,
+               createdAt: new Date().toISOString(), completedAt: null });
+    closeAddModal();
+  }
+
+  /* ── Actions ── */
+  function completeTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    patchTask(id, { completedAt: new Date().toISOString() });
+    showToast('✓ "' + task.title + '" marked as complete');
+  }
+  function reactivateTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    patchTask(id, { completedAt: null });
+    showToast('↩ "' + task.title + '" moved back to active');
+  }
+  function deleteSingle(id) {
+    const task = tasks.find(t => t.id === id);
+    removeTask(id);
+    exitMode();
+    if (task) showToast('🗑 "' + task.title + '" deleted');
+  }
+
+  /* ── FAB / delete mode ── */
+  function fabClick() {
+    if (fabMode !== null) { exitMode(); render(); return; }
+    fabMode = 'delete';
+    document.body.classList.add('mode-delete');
+    updateFab();
+  }
+  function exitMode() {
+    if (fabMode) document.body.classList.remove('mode-' + fabMode);
+    fabMode = null;
+  }
+  function updateFab() {
+    const fab = document.getElementById('fab-action');
+    if (fabMode === null) {
+      fab.textContent = '🗑 Delete a Task';
+      fab.className   = 'btn-outline-danger';
+    } else {
+      fab.textContent = '✕ Cancel';
+      fab.className   = 'btn-fab-cancel';
+    }
+  }
+
+  /* ── View toggle ── */
+  function toggleView() {
+    exitMode();
+    showingCompleted = !showingCompleted;
+    document.getElementById('active-view').style.display    = showingCompleted ? 'none'           : 'block';
+    document.getElementById('completed-view').style.display = showingCompleted ? 'block'          : 'none';
+    document.getElementById('toggle-view-btn').textContent  = showingCompleted ? '← Back'         : 'View Completed';
+    document.getElementById('add-task-btn').style.display   = showingCompleted ? 'none'           : 'inline-block';
+    document.getElementById('fab-action').style.display     = showingCompleted ? 'none'           : 'block';
+    render();
+  }
+
+  /* ── Helpers ── */
+  function formatDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+         + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  }
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /* ── Render ── */
+  function renderActive() {
+    const container = document.getElementById('active-list');
+    const active = tasks
+      .filter(t => !t.completedAt)
+      .sort((a, b) => {
+        const pd = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+        return pd !== 0 ? pd : a.title.localeCompare(b.title);
+      });
+
+    if (!showingCompleted) {
+      const fab = document.getElementById('fab-action');
+      fab.style.display = active.length > 0 ? 'block' : 'none';
+      updateFab();
+    }
+
+    container.innerHTML = active.length === 0
+      ? '<div class="empty-state">No active tasks. Add one above!</div>'
+      : active.map(t => `
+          <div class="task-card">
+            <div class="task-priority-bar priority-${t.priority}"></div>
+            <div class="task-body">
+              <div class="task-header">
+                <span class="task-title">${escHtml(t.title)}</span>
+                <span class="task-badge badge-${t.priority}">${t.priority}</span>
+              </div>
+              ${t.desc ? `<div class="task-desc">${escHtml(t.desc)}</div>` : ''}
+              <div class="task-meta">Added ${formatDate(t.createdAt)}</div>
+            </div>
+            <div class="task-actions">
+              <button class="btn-complete"    onclick="completeTask(${t.id})">✓ Done</button>
+              <button class="btn-task-delete" onclick="deleteSingle(${t.id})">🗑 Delete</button>
+            </div>
+          </div>`).join('');
+  }
+
+  function renderCompleted() {
+    const container = document.getElementById('completed-list');
+    const done = tasks
+      .filter(t => t.completedAt)
+      .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+
+    container.innerHTML = done.length === 0
+      ? '<div class="empty-state">No completed tasks yet.</div>'
+      : done.map(t => `
+          <div class="task-card">
+            <div class="task-priority-bar priority-${t.priority}"></div>
+            <div class="task-body">
+              <div class="task-header">
+                <span class="task-title task-title-done">${escHtml(t.title)}</span>
+                <span class="task-badge badge-${t.priority}">${t.priority}</span>
+              </div>
+              ${t.desc ? `<div class="task-desc">${escHtml(t.desc)}</div>` : ''}
+              <div class="task-meta">Completed ${formatDate(t.completedAt)}</div>
+            </div>
+            <div class="task-actions">
+              <button class="btn-task-reactivate" onclick="reactivateTask(${t.id})">↩ Reactivate</button>
+            </div>
+          </div>`).join('');
+  }
+
+  function render() {
+    renderActive();
+    renderCompleted();
+  }
+
+  /* ── Modal overlay click to close ── */
+  document.getElementById('add-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeAddModal();
+  });
+
+  /* ── Enter in title field submits ── */
+  document.getElementById('task-title-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') addTask();
+  });
+</script>
+</body>
+</html>
