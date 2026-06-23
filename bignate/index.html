@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Big Nate Reader</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #92D6F9;
+    font-family: 'Comic Sans MS', 'Chalkboard SE', cursive;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 40px;
+  }
+  header { display:flex; align-items:center; gap:14px; margin-bottom:24px; }
+  .logo-circle {
+    width:64px; height:64px; background:#514E81; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px; box-shadow:3px 3px 0 #2a2860;
+  }
+  h1 { font-size:2.2rem; color:#1a2e6e; text-shadow:2px 2px 0 rgba(255,255,255,0.5), 3px 3px 0 #514E81; }
+  .card {
+    background:#fff; border-radius:16px; border:3px solid #1a2e6e;
+    box-shadow:5px 5px 0 #1a2e6e; width:675px; overflow:hidden;
+  }
+  .card-header {
+    background:#514E81; padding:14px 20px;
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
+  }
+  .date-display { color:#fff; font-size:1.1rem; font-weight:bold; }
+  .date-input-wrap { display:flex; align-items:center; gap:8px; }
+  .date-input-wrap label { color:#ccc; font-size:0.85rem; }
+  input[type="date"] {
+    font-family:inherit; font-size:0.9rem; padding:5px 8px; border-radius:8px;
+    border:2px solid #92D6F9; background:#fff; color:#1a2e6e; cursor:pointer; outline:none;
+  }
+  input[type="date"]:focus { border-color:#ffd700; }
+  .comic-area {
+    width: 675px;
+    height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8fcff;
+    overflow: hidden;
+  }
+  .comic-img {
+    width: 675px;
+    height: 500px;
+    object-fit: contain;
+    display: block;
+  }
+  .status-msg { text-align:center; color:#514E81; font-size:1rem; padding:20px; line-height:1.8; }
+  .spinner {
+    width:48px; height:48px; border:5px solid #c5e8f8; border-top-color:#514E81;
+    border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 14px;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .error-msg {
+    color:#c0392b; background:#ffeaea; border:2px solid #e74c3c; border-radius:10px;
+    padding:16px 22px; text-align:center; font-size:0.88rem; line-height:1.7;
+    font-family:sans-serif; max-width:520px;
+  }
+  .nav-bar {
+    background:#e8f7ff; border-top:2px solid #c5e8f8;
+    padding:14px 20px; display:flex; gap:10px; justify-content:center;
+    flex-wrap:wrap; position:relative;
+  }
+  button {
+    font-family:'Comic Sans MS','Chalkboard SE',cursive; font-size:0.95rem;
+    padding:9px 20px; border-radius:10px; border:2px solid #1a2e6e; cursor:pointer;
+    font-weight:bold; transition:transform 0.08s,box-shadow 0.08s;
+    box-shadow:3px 3px 0 #1a2e6e; background:#fff; color:#1a2e6e;
+  }
+  button:hover:not(:disabled) { transform:translate(-1px,-1px); box-shadow:4px 4px 0 #1a2e6e; }
+  button:active:not(:disabled) { transform:translate(2px,2px); box-shadow:1px 1px 0 #1a2e6e; }
+  button:disabled { opacity:0.4; cursor:default; }
+  .btn-today { background:#514E81; color:#fff; border-color:#2a2860; box-shadow:3px 3px 0 #2a2860; }
+  .btn-today:hover:not(:disabled) { box-shadow:4px 4px 0 #2a2860; }
+  .btn-scan {
+    position:absolute; left:14px; top:50%; transform:translateY(-50%);
+    background:#1a2e6e; color:#fff; border-color:#0a1a4e;
+    box-shadow:3px 3px 0 #0a1a4e; font-size:0.85rem; padding:7px 14px;
+  }
+  .btn-scan:hover:not(:disabled) { box-shadow:4px 4px 0 #0a1a4e; transform:translateY(-50%) translate(-1px,-1px); }
+  .btn-scan:active:not(:disabled) { box-shadow:1px 1px 0 #0a1a4e; transform:translateY(-50%) translate(2px,2px); }
+
+  /* Scan modal */
+  .modal-backdrop {
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,0.5); z-index:100;
+    align-items:center; justify-content:center;
+  }
+  .modal-backdrop.open { display:flex; }
+  .modal {
+    background:#fff; border-radius:16px; border:3px solid #1a2e6e;
+    box-shadow:6px 6px 0 #1a2e6e; padding:28px 32px; width:480px; max-width:95vw;
+    font-family:'Comic Sans MS','Chalkboard SE',cursive;
+  }
+  .modal h2 { color:#1a2e6e; margin-bottom:18px; font-size:1.3rem; }
+  .modal-row { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .modal-row label { color:#555; font-size:0.9rem; width:60px; font-family:sans-serif; }
+  .modal-row input[type="date"] { flex:1; }
+  .modal-actions { display:flex; gap:10px; margin-top:22px; justify-content:flex-end; }
+  .btn-go { background:#514E81; color:#fff; border-color:#2a2860; box-shadow:3px 3px 0 #2a2860; }
+  .btn-go:hover:not(:disabled) { box-shadow:4px 4px 0 #2a2860; }
+  .btn-cancel { background:#fff; color:#555; border-color:#aaa; box-shadow:3px 3px 0 #aaa; }
+
+  .progress-area {
+    margin-top:16px; display:none;
+    font-family:sans-serif; font-size:0.85rem; color:#333;
+  }
+  .progress-bar-wrap {
+    background:#e0e0e0; border-radius:8px; height:14px; overflow:hidden; margin:8px 0;
+  }
+  .progress-bar { background:#514E81; height:100%; width:0%; transition:width 0.2s; border-radius:8px; }
+  .progress-label { color:#555; }
+  .progress-log {
+    margin-top:8px; height:80px; overflow-y:auto;
+    font-size:0.75rem; font-family:monospace; color:#444;
+    background:#f5f5f5; border-radius:6px; padding:6px 8px;
+  }
+
+  footer { margin-top:16px; color:rgba(26,46,110,0.55); font-size:0.72rem; text-align:center; font-family:sans-serif; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo-circle">✏️</div>
+  <h1>Big Nate Reader</h1>
+</header>
+<div class="card">
+  <div class="card-header">
+    <div class="date-display" id="dateDisplay">—</div>
+    <div class="date-input-wrap">
+      <label for="datePicker">Go to date:</label>
+      <input type="date" id="datePicker" min="1991-01-07">
+    </div>
+  </div>
+  <div class="comic-area" id="comicArea">
+    <div class="status-msg"><div class="spinner"></div>Loading today's strip…</div>
+  </div>
+  <div class="nav-bar">
+    <button class="btn-scan" onclick="openScan()">🔍 Scan</button>
+    <button id="btnPrev" onclick="changeDay(-1)">← Previous</button>
+    <button class="btn-today" onclick="goToday()">Today</button>
+    <button id="btnNext" onclick="changeDay(1)">Next →</button>
+  </div>
+</div>
+<footer>Big Nate by Lincoln Peirce · GoComics</footer>
+
+<!-- Scan Modal -->
+<div class="modal-backdrop" id="scanModal">
+  <div class="modal">
+    <h2>🔍 Scan Date Range</h2>
+    <div class="modal-row">
+      <label>From</label>
+      <input type="date" id="scanFrom" min="1991-01-07" value="1991-01-07">
+    </div>
+    <div class="modal-row">
+      <label>To</label>
+      <input type="date" id="scanTo" min="1991-01-07">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeScan()">Cancel</button>
+      <button class="btn-go" id="btnGo" onclick="startScan()">Start Scan</button>
+    </div>
+    <div class="progress-area" id="progressArea">
+      <div class="progress-label" id="progressLabel">0 / 0</div>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="progress-log" id="progressLog"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const pad = n => String(n).padStart(2, '0');
+  const toInputVal = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const toDisplay = d => d.toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+  const todayDate = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+
+  let currentDate = todayDate();
+  const MIN_DATE = new Date('1991-01-07');
+  const cache = {};
+
+  // ── urls.txt lookup ──────────────────────────────────────────────────────
+  // Format expected: one entry per line, either:
+  //   YYYY-MM-DD https://featureassets.gocomics.com/assets/HASH
+  // or just the full fxgocomics JSON lines, etc.
+  let urlsFromFile = null; // null = not loaded yet, {} = loaded
+
+  async function loadUrlsFile() {
+    if (urlsFromFile !== null) return;
+    try {
+      const resp = await fetch('./urls.txt');
+      if (!resp.ok) { urlsFromFile = {}; return; }
+      const text = await resp.text();
+      urlsFromFile = {};
+      for (const line of text.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        // Expected format: "YYYY-MM-DD https://..."
+        const m = trimmed.match(/^(\d{4}-\d{2}-\d{2})\s+(https:\/\/\S+)/);
+        if (m) urlsFromFile[m[1]] = m[2];
+      }
+      console.log(`urls.txt loaded: ${Object.keys(urlsFromFile).length} entries`);
+    } catch(e) {
+      urlsFromFile = {};
+    }
+  }
+
+  // ── Check if API is blocked ───────────────────────────────────────────────
+  let apiBlocked = null; // null = unknown
+
+  async function checkApiBlocked() {
+    if (apiBlocked !== null) return apiBlocked;
+    try {
+      const resp = await fetch('https://fxgocomics.com/api/v1/comics/bignate/strips/2026-06-23', {signal: AbortSignal.timeout(5000)});
+      apiBlocked = !resp.ok;
+    } catch(e) {
+      apiBlocked = true;
+    }
+    return apiBlocked;
+  }
+
+  // ── Fetch single strip ────────────────────────────────────────────────────
+  async function fetchImageUrl(dateStr) {
+    // Try API first (unless we already know it's blocked)
+    if (!apiBlocked) {
+      try {
+        const resp = await fetch(`https://fxgocomics.com/api/v1/comics/bignate/strips/${dateStr}`, {signal: AbortSignal.timeout(8000)});
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.imageUrl) { apiBlocked = false; return data.imageUrl; }
+        }
+      } catch(e) {
+        apiBlocked = true;
+      }
+    }
+    // Fall back to urls.txt
+    await loadUrlsFile();
+    if (urlsFromFile && urlsFromFile[dateStr]) return urlsFromFile[dateStr];
+    return null;
+  }
+
+  // ── Viewer ────────────────────────────────────────────────────────────────
+  function showLoading() {
+    document.getElementById('comicArea').innerHTML =
+      `<div class="status-msg"><div class="spinner"></div>Fetching strip…</div>`;
+  }
+  function showError(msg) {
+    document.getElementById('comicArea').innerHTML = `<div class="error-msg">⚠️ ${msg}</div>`;
+  }
+  function showComic(imgUrl) {
+    document.getElementById('comicArea').innerHTML =
+      `<img class="comic-img" src="${imgUrl}" alt="Big Nate comic strip">`;
+  }
+  function updateControls() {
+    document.getElementById('dateDisplay').textContent = toDisplay(currentDate);
+    document.getElementById('datePicker').value = toInputVal(currentDate);
+    document.getElementById('btnPrev').disabled = currentDate <= MIN_DATE;
+    document.getElementById('btnNext').disabled = currentDate >= todayDate();
+  }
+
+  async function loadComic(date) {
+    updateControls();
+    const key = toInputVal(date);
+    if (cache[key]) { showComic(cache[key]); return; }
+    showLoading();
+    const imgUrl = await fetchImageUrl(key);
+    if (imgUrl) {
+      cache[key] = imgUrl;
+      showComic(imgUrl);
+    } else {
+      showError(`<strong>Failed to load strip for ${key}.</strong><br>
+        <small style="font-family:sans-serif">API blocked and no entry in urls.txt</small>`);
+    }
+  }
+
+  function changeDay(delta) {
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() + delta);
+    if (d < MIN_DATE || d > todayDate()) return;
+    currentDate = d;
+    loadComic(currentDate);
+  }
+  function goToday() { currentDate = todayDate(); loadComic(currentDate); }
+
+  document.getElementById('datePicker').addEventListener('change', e => {
+    const [y,m,d] = e.target.value.split('-').map(Number);
+    if (!y) return;
+    const date = new Date(y, m-1, d);
+    if (isNaN(date.getTime()) || date < MIN_DATE || date > todayDate()) return;
+    currentDate = date;
+    loadComic(currentDate);
+  });
+
+  // ── Scan ──────────────────────────────────────────────────────────────────
+  let scanRunning = false;
+  let scanAbort = false;
+
+  function openScan() {
+    document.getElementById('scanTo').value = toInputVal(todayDate());
+    document.getElementById('progressArea').style.display = 'none';
+    document.getElementById('btnGo').textContent = 'Start Scan';
+    document.getElementById('btnGo').disabled = false;
+    scanAbort = false;
+    document.getElementById('scanModal').classList.add('open');
+  }
+  function closeScan() {
+    if (scanRunning) { scanAbort = true; }
+    document.getElementById('scanModal').classList.remove('open');
+  }
+
+  function logLine(msg) {
+    const log = document.getElementById('progressLog');
+    log.textContent += msg + '\n';
+    log.scrollTop = log.scrollHeight;
+  }
+
+  async function startScan() {
+    if (scanRunning) { scanAbort = true; return; }
+
+    const fromVal = document.getElementById('scanFrom').value;
+    const toVal   = document.getElementById('scanTo').value;
+    if (!fromVal || !toVal) { alert('Please set both dates.'); return; }
+
+    const fromDate = new Date(fromVal + 'T00:00:00');
+    const toDate   = new Date(toVal   + 'T00:00:00');
+    if (fromDate > toDate) { alert('From must be before To.'); return; }
+
+    // First, probe the API to decide mode
+    const progressArea = document.getElementById('progressArea');
+    const progressBar  = document.getElementById('progressBar');
+    const progressLabel= document.getElementById('progressLabel');
+    const progressLog  = document.getElementById('progressLog');
+
+    progressArea.style.display = 'block';
+    progressLog.textContent = '';
+    progressBar.style.width = '0%';
+    document.getElementById('btnGo').textContent = 'Stop';
+    scanRunning = true;
+    scanAbort = false;
+
+    logLine('Checking if API is available…');
+    const blocked = await checkApiBlocked();
+    if (blocked) {
+      logLine('API blocked — will use urls.txt as fallback.');
+      await loadUrlsFile();
+      const count = urlsFromFile ? Object.keys(urlsFromFile).length : 0;
+      logLine(`urls.txt loaded: ${count} entries.`);
+    } else {
+      logLine('API available — fetching from fxgocomics.com.');
+    }
+
+    // Build list of dates
+    const dates = [];
+    const d = new Date(fromDate);
+    while (d <= toDate) {
+      dates.push(toInputVal(d));
+      d.setDate(d.getDate() + 1);
+    }
+
+    const total = dates.length;
+    const results = []; // array of "YYYY-MM-DD https://..."
+    let done = 0;
+
+    for (const dateStr of dates) {
+      if (scanAbort) { logLine('Scan stopped.'); break; }
+
+      progressLabel.textContent = `${done} / ${total}`;
+      progressBar.style.width = `${(done / total) * 100}%`;
+
+      let imgUrl = null;
+
+      if (!blocked) {
+        try {
+          const resp = await fetch(`https://fxgocomics.com/api/v1/comics/bignate/strips/${dateStr}`, {signal: AbortSignal.timeout(8000)});
+          if (resp.ok) {
+            const data = await resp.json();
+            imgUrl = data.imageUrl || null;
+          }
+        } catch(e) { imgUrl = null; }
+      }
+
+      // Fallback to urls.txt
+      if (!imgUrl && urlsFromFile) {
+        imgUrl = urlsFromFile[dateStr] || null;
+      }
+
+      if (imgUrl) {
+        results.push(`${dateStr} ${imgUrl}`);
+        logLine(`✓ ${dateStr}`);
+        cache[dateStr] = imgUrl; // also populate viewer cache
+      } else {
+        logLine(`✗ ${dateStr} — not found`);
+      }
+
+      done++;
+      // Small delay to avoid hammering the API
+      if (!blocked) await new Promise(r => setTimeout(r, 150));
+    }
+
+    progressLabel.textContent = `${done} / ${total} — done!`;
+    progressBar.style.width = '100%';
+    logLine(`\nComplete. ${results.length} strips found.`);
+
+    // Download as text file
+    if (results.length > 0) {
+      const blob = new Blob([results.join('\n') + '\n'], {type: 'text/plain'});
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `bignate_urls_${fromVal}_to_${toVal}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      logLine(`Downloaded: bignate_urls_${fromVal}_to_${toVal}.txt`);
+    }
+
+    document.getElementById('btnGo').textContent = 'Start Scan';
+    document.getElementById('btnGo').disabled = false;
+    scanRunning = false;
+  }
+
+  // Close modal on backdrop click
+  document.getElementById('scanModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('scanModal')) closeScan();
+  });
+
+  // ── Boot ─────────────────────────────────────────────────────────────────
+  // Probe API quietly on load so we know the mode upfront
+  checkApiBlocked();
+  loadUrlsFile();
+  loadComic(currentDate);
+</script>
+</body>
+</html>
