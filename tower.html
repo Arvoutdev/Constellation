@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Tower Command Generator</title>
+<style>
+body { font-family: monospace; max-width: 900px; margin: 20px auto; padding: 0 12px; }
+label { display: inline-block; min-width: 140px; }
+input { font-family: monospace; width: 100px; margin-bottom: 6px; }
+input[type=text] { width: 260px; }
+.row { margin-bottom: 4px; }
+h2 { border-bottom: 1px solid #888; margin-top: 30px; }
+h3 { margin-bottom: 4px; }
+pre { background: #eee; padding: 8px; white-space: pre-wrap; word-break: break-all; position: relative; }
+button.copy { font-family: monospace; margin-bottom: 6px; cursor: pointer; }
+.floor-block { border: 1px solid #999; padding: 10px; margin-bottom: 18px; }
+.note { color: #555; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h2>Setup</h2>
+<div class="row"><label>Start X</label><input type="number" id="sx" value="0"></div>
+<div class="row"><label>Start Y</label><input type="number" id="sy" value="64"></div>
+<div class="row"><label>Start Z</label><input type="number" id="sz" value="0"></div>
+<div class="row"><label>End X</label><input type="number" id="ex" value="20"></div>
+<div class="row"><label>End Z</label><input type="number" id="ez" value="20"></div>
+<div class="row"><label>Number of floors</label><input type="number" id="numFloors" value="9"></div>
+<div class="row"><label>Floor height</label><input type="number" id="floorHeight" value="11"></div>
+<div class="row"><label>Gap between floors</label><input type="number" id="gap" value="2"></div>
+<div class="row"><label>Tag name prefix</label><input type="text" id="teamPrefix" value="team"></div>
+<div class="row"><label>Mob list (comma sep)</label><input type="text" id="mobList" value="zombie, skeleton"></div>
+<div class="row"><button onclick="generate()">Generate commands</button></div>
+
+<h2>Remove pad - standing here kills + un-tags (run BEFORE the spectator trap blocks)</h2>
+<div class="row"><label>Center X</label><input type="number" id="removeX" value="0"></div>
+<div class="row"><label>Center Y</label><input type="number" id="removeY" value="0"></div>
+<div class="row"><label>Center Z</label><input type="number" id="removeZ" value="0"></div>
+<div class="row"><label>Box size</label><input type="number" id="removeSize" value="3"></div>
+<div class="row"><button onclick="generateRemove()">Generate</button></div>
+<div id="removeOutput"></div>
+
+<h2>Add pad - standing here tags for floor 1 (run BEFORE the spectator trap blocks)</h2>
+<div class="row"><label>Center X</label><input type="number" id="addX" value="0"></div>
+<div class="row"><label>Center Y</label><input type="number" id="addY" value="40"></div>
+<div class="row"><label>Center Z</label><input type="number" id="addZ" value="0"></div>
+<div class="row"><label>Box size</label><input type="number" id="addSize" value="3"></div>
+<div class="row"><button onclick="generateAdd()">Generate</button></div>
+<div id="addOutput"></div>
+
+<div id="output"></div>
+
+<script>
+function copyText(id) {
+  var el = document.getElementById(id);
+  navigator.clipboard.writeText(el.textContent);
+}
+
+function block(id, title, lines) {
+  return '<h3>' + title + '</h3>' +
+    '<button class="copy" onclick="copyText(\'' + id + '\')">Copy</button>' +
+    '<pre id="' + id + '">' + lines.join('\n') + '</pre>';
+}
+
+function getNumFloors() {
+  return parseInt(document.getElementById('numFloors').value) || 1;
+}
+function getTeamPrefix() {
+  return document.getElementById('teamPrefix').value.trim() || 'team';
+}
+
+function boxArgs(cx, cy, cz, size) {
+  var half = (size - 1) / 2;
+  var minX = cx - half, minY = cy - half, minZ = cz - half;
+  var d = size - 1;
+  return 'x=' + minX + ',y=' + minY + ',z=' + minZ + ',dx=' + d + ',dy=' + d + ',dz=' + d;
+}
+
+function generateRemove() {
+  var cx = parseInt(document.getElementById('removeX').value);
+  var cy = parseInt(document.getElementById('removeY').value);
+  var cz = parseInt(document.getElementById('removeZ').value);
+  var size = parseInt(document.getElementById('removeSize').value);
+  var numFloors = getNumFloors();
+  var teamPrefix = getTeamPrefix();
+  var sel = boxArgs(cx, cy, cz, size);
+
+  var lines = [];
+  for (var i = 1; i <= numFloors; i++) {
+    lines.push('execute as @a[' + sel + '] run tag @s remove ' + teamPrefix + i);
+  }
+  lines.push('execute as @a[' + sel + '] run gamemode survival @s');
+  lines.push('execute as @a[' + sel + '] run kill @s');
+  document.getElementById('removeOutput').innerHTML = block('removeCmd', 'One command block per line, repeating, always active', lines);
+}
+
+function generateAdd() {
+  var cx = parseInt(document.getElementById('addX').value);
+  var cy = parseInt(document.getElementById('addY').value);
+  var cz = parseInt(document.getElementById('addZ').value);
+  var size = parseInt(document.getElementById('addSize').value);
+  var teamPrefix = getTeamPrefix();
+  var sel = boxArgs(cx, cy, cz, size);
+
+  document.getElementById('addOutput').innerHTML = block('addCmd', 'One command block per line, repeating, always active', [
+    'execute as @a[' + sel + '] run tag @s add ' + teamPrefix + '1',
+    'execute as @a[' + sel + '] run scoreboard players set @s lastdeaths 0'
+  ]);
+}
+
+function generate() {
+  var sx = parseInt(document.getElementById('sx').value);
+  var sy = parseInt(document.getElementById('sy').value);
+  var sz = parseInt(document.getElementById('sz').value);
+  var ex = parseInt(document.getElementById('ex').value);
+  var ez = parseInt(document.getElementById('ez').value);
+  var numFloors = getNumFloors();
+  var floorHeight = parseInt(document.getElementById('floorHeight').value);
+  var gap = parseInt(document.getElementById('gap').value);
+  var teamPrefix = getTeamPrefix();
+  var mobs = document.getElementById('mobList').value.split(',').map(function(m){return m.trim();}).filter(function(m){return m.length > 0;});
+
+  var minX = Math.min(sx, ex), maxX = Math.max(sx, ex);
+  var minZ = Math.min(sz, ez), maxZ = Math.max(sz, ez);
+  var sizeX = maxX - minX;
+  var sizeZ = maxZ - minZ;
+
+  var floors = [];
+  for (var i = 1; i <= numFloors; i++) {
+    var floorMinY = sy + (i - 1) * (floorHeight + gap);
+    var floorMaxY = floorMinY + floorHeight - 1;
+    floors.push({
+      n: i,
+      tag: teamPrefix + i,
+      minX: minX, maxX: maxX, minZ: minZ, maxZ: maxZ,
+      minY: floorMinY, maxY: floorMaxY,
+      sizeX: sizeX, sizeY: floorMaxY - floorMinY, sizeZ: sizeZ,
+      centerX: Math.round((minX + maxX) / 2),
+      centerY: floorMinY + 1,
+      centerZ: Math.round((minZ + maxZ) / 2)
+    });
+  }
+
+  var html = '';
+  var counter = 0;
+  function nextId() { counter++; return 'cmd' + counter; }
+
+  // ---- one-time setup ----
+  html += '<h2>One-time setup (run once)</h2>';
+  html += '<p class="note">Tags don\'t need to be registered ahead of time like teams do - this is just the death-tracking objectives.</p>';
+  html += block(nextId(), 'Objectives', [
+    'scoreboard objectives add deaths deathCount',
+    'scoreboard objectives add lastdeaths dummy',
+    'scoreboard objectives add tmp dummy'
+  ]);
+
+  // ---- per floor ----
+  floors.forEach(function(f, idx) {
+    html += '<div class="floor-block">';
+    html += '<h2>Floor ' + f.n + ' (tag: ' + f.tag + ')</h2>';
+    html += '<p class="note">Bounds: (' + f.minX + ', ' + f.minY + ', ' + f.minZ + ') to (' +
+      f.maxX + ', ' + f.maxY + ', ' + f.maxZ + ')  |  Center: (' + f.centerX + ', ' + f.centerY + ', ' + f.centerZ + ')</p>';
+
+    var tagExclusions = floors.map(function(fl) { return 'tag=!' + fl.tag; }).join(',');
+    html += block(nextId(), 'Kill anyone not tagged for any floor, in this floor\'s box (replace them yourself)', [
+      'kill @a[x=' + f.minX + ',y=' + f.minY + ',z=' + f.minZ +
+        ',dx=' + f.sizeX + ',dy=' + f.sizeY + ',dz=' + f.sizeZ +
+        ',' + tagExclusions + ']'
+    ]);
+
+    html += block(nextId(), 'Detect death -> spectator (2 commands, run repeating)', [
+      'execute as @a[tag=' + f.tag + '] if score @s deaths > @s lastdeaths run gamemode spectator @s',
+      'execute as @a[tag=' + f.tag + '] if score @s deaths > @s lastdeaths run scoreboard players operation @s lastdeaths = @s deaths'
+    ]);
+
+    html += block(nextId(), 'Spectator trap - keep dead players inside the floor (run repeating)', [
+      'execute as @a[tag=' + f.tag + ',gamemode=spectator] unless entity @s[x=' + f.minX + ',y=' + f.minY + ',z=' + f.minZ +
+        ',dx=' + f.sizeX + ',dy=' + f.sizeY + ',dz=' + f.sizeZ + '] run teleport @s ' + f.centerX + ' ' + f.centerY + ' ' + f.centerZ
+    ]);
+
+    html += block(nextId(), 'Team wipe -> survival then kill everyone (optional, run repeating)', [
+      'execute store success score ' + f.tag + '_wiped tmp if entity @a[tag=' + f.tag + ',gamemode=spectator] unless entity @a[tag=' + f.tag + ',gamemode=survival]',
+      'execute if score ' + f.tag + '_wiped tmp matches 1 run gamemode survival @a[tag=' + f.tag + ']',
+      'execute if score ' + f.tag + '_wiped tmp matches 1 run kill @a[tag=' + f.tag + ']'
+    ]);
+
+    if (idx > 0) {
+      var prev = floors[idx - 1];
+      html += block(nextId(), 'Advance previous floor\'s players to this floor (run once, when they clear ' + prev.tag + ')', [
+        'execute as @a[tag=' + prev.tag + '] run gamemode survival @s',
+        'execute as @a[tag=' + prev.tag + '] run effect give @s instant_health 1 255 true',
+        'tag @a[tag=' + prev.tag + '] add ' + f.tag,
+        'tag @a[tag=' + prev.tag + '] remove ' + prev.tag,
+        'execute as @a[tag=' + f.tag + '] run teleport @s ' + f.centerX + ' ' + f.centerY + ' ' + f.centerZ
+      ]);
+    }
+
+    if (mobs.length > 0) {
+      var mobLines = mobs.map(function(m) {
+        return 'summon ' + m + ' ' + f.centerX + ' ' + f.centerY + ' ' + f.centerZ;
+      });
+      html += block(nextId(), 'Spawn mobs at floor center (duplicate with different coords for spread)', mobLines);
+    }
+
+    html += '</div>';
+  });
+
+  document.getElementById('output').innerHTML = html;
+}
+
+generate();
+generateRemove();
+generateAdd();
+</script>
+</body>
+</html>
