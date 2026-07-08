@@ -19,11 +19,51 @@ button.copy { font-family: monospace; margin-bottom: 6px; cursor: pointer; }
 </head>
 <body>
 
+<div class="row">
+<button onclick="nextCommand()">Get next command</button>
+<input type="number" id="cmdIndexBox" value="0" min="0" style="width:60px" onchange="jumpToCommand()">
+<input type="text" id="currentCmdBox" readonly
+  style="width:500px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">
+<button class="copy" onclick="copyCurrentCommand()">Copy</button>
+</div>
+
+<div class="row">
+<label style="min-width:auto"><input type="checkbox" id="useMinecraftPrefix" checked onchange="generateAll()"> Use minecraft: prefix on commands</label>
+</div>
+
 <h2>Boss - Wither Skeleton "Boss"</h2>
 <div id="bossWSOutput"></div>
+<div class="row"><button onclick="toggleBossEdit('WS')">Edit boss stats</button></div>
+<div id="bossWSEdit" class="floor-block" style="display:none">
+  <div class="row"><label>Name</label><input type="text" id="wsName" value="Boss"></div>
+  <div class="row"><label>Mob type</label><input type="text" id="wsMob" value="wither_skeleton"></div>
+  <div class="row"><label>Scale</label><input type="number" id="wsScale" value="1.5" step="0.1"></div>
+  <div class="row"><label>Speed (base value)</label><input type="number" id="wsSpeed" value="0.5" step="0.05"></div>
+  <div class="row"><label>Max health</label><input type="number" id="wsMaxHealth" value="800"></div>
+  <div class="row"><label>Jump boost level (0=none)</label><input type="number" id="wsJump" value="2"></div>
+  <div class="row"><label>Weapon item</label><input type="text" id="wsWeapon" value="diamond_spear"></div>
+  <div class="row"><label>Weapon enchants</label><input type="text" id="wsWeaponEnch" value="knockback:10, unbreaking:255"></div>
+  <div class="row"><label>Armor material prefix</label><input type="text" id="wsArmorMat" value="iron"></div>
+  <div class="row"><label>Armor enchants</label><input type="text" id="wsArmorEnch" value="unbreaking:255"></div>
+  <div class="row"><button onclick="applyBossEdit('WS')">Apply</button></div>
+</div>
 
 <h2>Boss - Stray "Boss"</h2>
 <div id="bossStrayOutput"></div>
+<div class="row"><button onclick="toggleBossEdit('Stray')">Edit boss stats</button></div>
+<div id="bossStrayEdit" class="floor-block" style="display:none">
+  <div class="row"><label>Name</label><input type="text" id="strayName" value="Boss"></div>
+  <div class="row"><label>Mob type</label><input type="text" id="strayMob" value="stray"></div>
+  <div class="row"><label>Scale</label><input type="number" id="strayScale" value="1.6" step="0.1"></div>
+  <div class="row"><label>Speed (base value)</label><input type="number" id="straySpeed" value="0.1" step="0.05"></div>
+  <div class="row"><label>Max health</label><input type="number" id="strayMaxHealth" value="1200"></div>
+  <div class="row"><label>Jump boost level (0=none)</label><input type="number" id="strayJump" value="0"></div>
+  <div class="row"><label>Weapon item</label><input type="text" id="strayWeapon" value="netherite_sword"></div>
+  <div class="row"><label>Weapon enchants</label><input type="text" id="strayWeaponEnch" value="flame:1, unbreaking:255"></div>
+  <div class="row"><label>Armor material prefix</label><input type="text" id="strayArmorMat" value="golden"></div>
+  <div class="row"><label>Armor enchants</label><input type="text" id="strayArmorEnch" value="unbreaking:255"></div>
+  <div class="row"><button onclick="applyBossEdit('Stray')">Apply</button></div>
+</div>
 
 <h2>Setup</h2>
 <div class="row"><label>Start X</label><input type="number" id="sx" value="0"></div>
@@ -69,11 +109,71 @@ function copyText(id) {
   navigator.clipboard.writeText(el.textContent);
 }
 
-function block(id, title, lines) {
-  var slashed = lines.map(function(l) { return l.charAt(0) === '/' ? l : '/' + l; });
+// Command KEYWORDS this tool prefixes with "minecraft:" - deliberately does NOT include
+// entity types, item ids, enchantment ids, or attribute ids, since those are resource
+// identifiers rather than the command itself, and the checkbox only affects the latter.
+var CMD_WORDS = ['execute','kill','tag','gamemode','teleport','effect','scoreboard',
+  'attribute','item','summon','setblock','data','title'];
+var CMD_PREFIX_RE = new RegExp('minecraft:(' + CMD_WORDS.join('|') + ')\\b', 'g');
+
+function applyPrefixToggle(line) {
+  var useIt = document.getElementById('useMinecraftPrefix').checked;
+  if (useIt) return line;
+  return line.replace(CMD_PREFIX_RE, '$1');
+}
+
+// Holds the latest generated commands per section, so the "get next command" stepper
+// can walk through everything on the page as one flat, ordered list.
+var sectionCommands = { boss: [], remove: [], add: [], main: [] };
+var cmdIndex = 0;
+
+function block(id, title, lines, collectInto) {
+  var toggled = lines.map(applyPrefixToggle);
+  var slashed = toggled.map(function(l) { return l.charAt(0) === '/' ? l : '/' + l; });
+  if (collectInto) {
+    slashed.forEach(function(l) { collectInto.push(l); });
+  }
   return '<h3>' + title + '</h3>' +
     '<button class="copy" onclick="copyText(\'' + id + '\')">Copy</button>' +
     '<pre id="' + id + '">' + slashed.join('\n') + '</pre>';
+}
+
+function getAllCommandsFlat() {
+  return sectionCommands.boss.concat(sectionCommands.remove, sectionCommands.add, sectionCommands.main);
+}
+
+function refreshCommandStepper() {
+  var all = getAllCommandsFlat();
+  if (all.length === 0) {
+    document.getElementById('cmdIndexBox').value = '0';
+    document.getElementById('currentCmdBox').value = '(no commands generated yet)';
+    return;
+  }
+  if (cmdIndex >= all.length) cmdIndex = 0;
+  document.getElementById('cmdIndexBox').value = cmdIndex;
+  document.getElementById('currentCmdBox').value = all[cmdIndex];
+}
+
+function nextCommand() {
+  var all = getAllCommandsFlat();
+  if (all.length === 0) return;
+  cmdIndex = (cmdIndex + 1) % all.length;
+  refreshCommandStepper();
+  copyCurrentCommand();
+}
+
+function jumpToCommand() {
+  var all = getAllCommandsFlat();
+  if (all.length === 0) { refreshCommandStepper(); return; }
+  var val = parseInt(document.getElementById('cmdIndexBox').value);
+  if (isNaN(val) || val < 0) val = 0;
+  if (val >= all.length) val = all.length - 1;
+  cmdIndex = val;
+  refreshCommandStepper();
+}
+
+function copyCurrentCommand() {
+  navigator.clipboard.writeText(document.getElementById('currentCmdBox').value);
 }
 
 function getNumFloors() {
@@ -139,48 +239,103 @@ function setblockChainRow(startX, y, z, commands) {
   });
 }
 
-var bossWSCommands = [
-  'minecraft:summon minecraft:wither_skeleton ~ ~ ~ {CustomName:"Boss"}',
-  'minecraft:attribute @e[type=minecraft:wither_skeleton,name="Boss",limit=1] minecraft:scale base set 1.5',
-  'minecraft:attribute @e[type=minecraft:wither_skeleton,name="Boss",limit=1] minecraft:movement_speed base set 0.5',
-  'minecraft:attribute @e[type=minecraft:wither_skeleton,name="Boss",limit=1] minecraft:max_health base set 800',
-  'minecraft:data merge entity @e[type=minecraft:wither_skeleton,name="Boss",limit=1] {Health:800.0f}',
-  'minecraft:effect give @e[type=minecraft:wither_skeleton,name="Boss",limit=1] minecraft:jump_boost 1000000 1 true',
-  'minecraft:item replace entity @e[type=minecraft:wither_skeleton,name="Boss",limit=1] weapon.mainhand with minecraft:diamond_spear[minecraft:enchantments={"minecraft:knockback":10,"minecraft:unbreaking":255}]',
-  'minecraft:item replace entity @e[type=minecraft:wither_skeleton,name="Boss",limit=1] armor.head with minecraft:iron_helmet[minecraft:enchantments={"minecraft:unbreaking":255}]',
-  'minecraft:item replace entity @e[type=minecraft:wither_skeleton,name="Boss",limit=1] armor.chest with minecraft:iron_chestplate[minecraft:enchantments={"minecraft:unbreaking":255}]',
-  'minecraft:item replace entity @e[type=minecraft:wither_skeleton,name="Boss",limit=1] armor.legs with minecraft:iron_leggings[minecraft:enchantments={"minecraft:unbreaking":255}]',
-  'minecraft:item replace entity @e[type=minecraft:wither_skeleton,name="Boss",limit=1] armor.feet with minecraft:iron_boots[minecraft:enchantments={"minecraft:unbreaking":255}]'
-];
+var bossWSConfig = {
+  name: 'Boss', mob: 'wither_skeleton', scale: 1.5, speed: 0.5, maxHealth: 800,
+  jumpLevel: 2, weapon: 'diamond_spear', weaponEnchants: 'knockback:10, unbreaking:255',
+  armorMaterial: 'iron', armorEnchants: 'unbreaking:255'
+};
 
-var bossStrayCommands = [
-  'minecraft:summon minecraft:stray ~ ~ ~ {CustomName:"Boss"}',
-  'minecraft:attribute @e[type=minecraft:stray,name="Boss",limit=1] minecraft:scale base set 1.6',
-  'minecraft:attribute @e[type=minecraft:stray,name="Boss",limit=1] minecraft:movement_speed base set 0.1',
-  'minecraft:attribute @e[type=minecraft:stray,name="Boss",limit=1] minecraft:max_health base set 1200',
-  'minecraft:data merge entity @e[type=minecraft:stray,name="Boss",limit=1] {Health:1200.0f}',
-  'minecraft:item replace entity @e[type=minecraft:stray,name="Boss",limit=1] weapon.mainhand with minecraft:netherite_sword[minecraft:enchantments={"minecraft:flame":1,"minecraft:unbreaking":255}]',
-  'minecraft:item replace entity @e[type=minecraft:stray,name="Boss",limit=1] armor.head with minecraft:golden_helmet[minecraft:enchantments={"minecraft:unbreaking":255}]',
-  'minecraft:item replace entity @e[type=minecraft:stray,name="Boss",limit=1] armor.chest with minecraft:golden_chestplate[minecraft:enchantments={"minecraft:unbreaking":255}]',
-  'minecraft:item replace entity @e[type=minecraft:stray,name="Boss",limit=1] armor.legs with minecraft:golden_leggings[minecraft:enchantments={"minecraft:unbreaking":255}]',
-  'minecraft:item replace entity @e[type=minecraft:stray,name="Boss",limit=1] armor.feet with minecraft:golden_boots[minecraft:enchantments={"minecraft:unbreaking":255}]'
-];
+var bossStrayConfig = {
+  name: 'Boss', mob: 'stray', scale: 1.6, speed: 0.1, maxHealth: 1200,
+  jumpLevel: 0, weapon: 'netherite_sword', weaponEnchants: 'flame:1, unbreaking:255',
+  armorMaterial: 'golden', armorEnchants: 'unbreaking:255'
+};
+
+// Turns "knockback:10, unbreaking:255" into {"minecraft:knockback":10,"minecraft:unbreaking":255}
+function enchantListToObj(str) {
+  var parts = (str || '').split(',').map(function(s){return s.trim();}).filter(function(s){return s.length>0;});
+  var kv = parts.map(function(e) {
+    var p = e.split(':');
+    var name = p[0].trim();
+    var level = p[1] ? p[1].trim() : '1';
+    return '"minecraft:' + name + '":' + level;
+  });
+  return '{' + kv.join(',') + '}';
+}
+
+function buildBossCommands(cfg) {
+  var mob = cfg.mob.replace('minecraft:', '');
+  var sel = '@e[type=minecraft:' + mob + ',name="' + cfg.name + '",limit=1]';
+  var hp = parseFloat(cfg.maxHealth) || 20;
+  var cmds = [];
+
+  cmds.push('minecraft:summon minecraft:' + mob + ' ~ ~ ~ {CustomName:"' + cfg.name + '",PersistenceRequired:1b}');
+  cmds.push('minecraft:attribute ' + sel + ' minecraft:scale base set ' + cfg.scale);
+  cmds.push('minecraft:attribute ' + sel + ' minecraft:movement_speed base set ' + cfg.speed);
+  cmds.push('minecraft:attribute ' + sel + ' minecraft:max_health base set ' + hp);
+  cmds.push('minecraft:data merge entity ' + sel + ' {Health:' + hp.toFixed(1) + 'f}');
+  if (cfg.jumpLevel > 0) {
+    cmds.push('minecraft:effect give ' + sel + ' minecraft:jump_boost 1000000 ' + (cfg.jumpLevel - 1) + ' true');
+  }
+
+  var weapon = cfg.weapon.replace('minecraft:', '');
+  cmds.push('minecraft:item replace entity ' + sel + ' weapon.mainhand with minecraft:' + weapon +
+    '[minecraft:enchantments=' + enchantListToObj(cfg.weaponEnchants) + ']');
+
+  var armorEnch = enchantListToObj(cfg.armorEnchants);
+  var mat = cfg.armorMaterial.trim();
+  [['helmet', 'head'], ['chestplate', 'chest'], ['leggings', 'legs'], ['boots', 'feet']].forEach(function(piece) {
+    cmds.push('minecraft:item replace entity ' + sel + ' armor.' + piece[1] + ' with minecraft:' + mat + '_' + piece[0] +
+      '[minecraft:enchantments=' + armorEnch + ']');
+  });
+
+  return cmds;
+}
+
+function toggleBossEdit(which) {
+  var el = document.getElementById('boss' + which + 'Edit');
+  el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+}
+
+function applyBossEdit(which) {
+  var prefix = which === 'WS' ? 'ws' : 'stray';
+  var cfg = which === 'WS' ? bossWSConfig : bossStrayConfig;
+  cfg.name = document.getElementById(prefix + 'Name').value.trim() || 'Boss';
+  cfg.mob = document.getElementById(prefix + 'Mob').value.trim().replace('minecraft:', '');
+  cfg.scale = document.getElementById(prefix + 'Scale').value;
+  cfg.speed = document.getElementById(prefix + 'Speed').value;
+  cfg.maxHealth = document.getElementById(prefix + 'MaxHealth').value;
+  cfg.jumpLevel = parseInt(document.getElementById(prefix + 'Jump').value) || 0;
+  cfg.weapon = document.getElementById(prefix + 'Weapon').value.trim().replace('minecraft:', '');
+  cfg.weaponEnchants = document.getElementById(prefix + 'WeaponEnch').value;
+  cfg.armorMaterial = document.getElementById(prefix + 'ArmorMat').value.trim();
+  cfg.armorEnchants = document.getElementById(prefix + 'ArmorEnch').value;
+  generateBoss();
+}
 
 function generateBoss() {
   var cb = getCbOrigin();
   var wsZ = cb.z - 8;
   var strayZ = cb.z - 6;
 
-  var wsLines = setblockChainRow(cb.x, cb.y, wsZ, bossWSCommands);
-  var strayLines = setblockChainRow(cb.x, cb.y, strayZ, bossStrayCommands);
+  var wsCommands = buildBossCommands(bossWSConfig);
+  var strayCommands = buildBossCommands(bossStrayConfig);
 
+  var wsLines = setblockChainRow(cb.x, cb.y, wsZ, wsCommands);
+  var strayLines = setblockChainRow(cb.x, cb.y, strayZ, strayCommands);
+
+  var collected = [];
   document.getElementById('bossWSOutput').innerHTML = block('bossWSCmd',
     'Row at Z=' + wsZ + '. First block is impulse (needs its own redstone pulse - a button ' +
     'works well). The rest are chain blocks that fire automatically right after, in order, ' +
-    'so the boss always exists before its stats/gear get set.', wsLines);
+    'so the boss always exists before its stats/gear get set.', wsLines, collected);
 
   document.getElementById('bossStrayOutput').innerHTML = block('bossStrayCmd',
-    'Row at Z=' + strayZ + '. Same setup: first block impulse, rest chained.', strayLines);
+    'Row at Z=' + strayZ + '. Same setup: first block impulse, rest chained.', strayLines, collected);
+
+  sectionCommands.boss = collected;
+  cmdIndex = 0;
+  refreshCommandStepper();
 }
 
 function generateRemove() {
@@ -201,8 +356,12 @@ function generateRemove() {
   cmds.push('minecraft:execute as @a[' + sel + '] run minecraft:kill @s');
 
   var lines = setblockRow(cb.x, cb.y, cb.z - 4, cmds);
+  var collected = [];
   document.getElementById('removeOutput').innerHTML = block('removeCmd',
-    'Places this row at Z=' + (cb.z - 4) + '. Power the first block with redstone to turn it on.', lines);
+    'Places this row at Z=' + (cb.z - 4) + '. Power the first block with redstone to turn it on.', lines, collected);
+  sectionCommands.remove = collected;
+  cmdIndex = 0;
+  refreshCommandStepper();
 }
 
 function generateAdd() {
@@ -222,8 +381,12 @@ function generateAdd() {
   ];
 
   var lines = setblockRow(cb.x, cb.y, cb.z - 2, cmds);
+  var collected = [];
   document.getElementById('addOutput').innerHTML = block('addCmd',
-    'Places this row at Z=' + (cb.z - 2) + '. Power the first block with redstone to turn it on.', lines);
+    'Places this row at Z=' + (cb.z - 2) + '. Power the first block with redstone to turn it on.', lines, collected);
+  sectionCommands.add = collected;
+  cmdIndex = 0;
+  refreshCommandStepper();
 }
 
 function generate() {
@@ -268,6 +431,7 @@ function generate() {
 
   var html = '';
   var counter = 0;
+  var collected = [];
   function nextId() { counter++; return 'cmd' + counter; }
 
   // ---- one-time setup (not repeating, plain text) ----
@@ -276,7 +440,7 @@ function generate() {
     'minecraft:scoreboard objectives add deaths deathCount',
     'minecraft:scoreboard objectives add lastdeaths dummy',
     'minecraft:scoreboard objectives add tmp dummy'
-  ]);
+  ], collected);
 
   // ---- per floor ----
   var tagExclusionsAll = floors.map(function(fl) { return 'tag=!' + fl.tag; }).join(',');
@@ -310,7 +474,7 @@ function generate() {
     var lines = setblockRow(cb.x, cb.y, rowZ, cmds);
     html += block(nextId(), 'Repeating logic for this floor - placed as a row at Z=' + rowZ +
       ' (kill non-team players, death detection, boundary trap for the whole team, team wipe). ' +
-      'Power the first block with redstone to turn this floor on.', lines);
+      'Power the first block with redstone to turn this floor on.', lines, collected);
 
     // ---- advance to next floor: ordered one-shot sequence (chain), stacked at Y+1 ----
     if (idx > 0) {
@@ -327,7 +491,7 @@ function generate() {
       var advLines = setblockChainRow(cb.x, cb.y + 1, rowZ, advCmds);
       html += block(nextId(), 'Advance previous floor\'s players to this floor (run once, when they clear ' + prev.tag +
         ') - placed as a row at Y=' + (cb.y + 1) + ', Z=' + rowZ + '. First block impulse (needs a manual redstone ' +
-        'trigger, e.g. a button), rest chained so heal -> retag -> teleport -> title happen strictly in order.', advLines);
+        'trigger, e.g. a button), rest chained so heal -> retag -> teleport -> title happen strictly in order.', advLines, collected);
     }
 
     // ---- mob spawns, cycling through the floor's 4 corners - one-shot sequence (chain), stacked at Y+2 ----
@@ -338,13 +502,16 @@ function generate() {
       });
       var mobLines = setblockChainRow(cb.x, cb.y + 2, rowZ, mobCmds);
       html += block(nextId(), 'Spawn mobs, one per corner (corner reused after 4) - placed as a row at Y=' + (cb.y + 2) +
-        ', Z=' + rowZ + '. First block impulse (needs a manual redstone trigger), rest chained.', mobLines);
+        ', Z=' + rowZ + '. First block impulse (needs a manual redstone trigger), rest chained.', mobLines, collected);
     }
 
     html += '</div>';
   });
 
   document.getElementById('output').innerHTML = html;
+  sectionCommands.main = collected;
+  cmdIndex = 0;
+  refreshCommandStepper();
 }
 
 function generateAll() {
