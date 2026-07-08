@@ -454,8 +454,9 @@ function generate() {
     // All 4 repeating behaviours for this floor, in one row:
     //  1) kill any untagged ("normal") player found anywhere in this floor's box
     //  2..3) death -> spectator detection
-    //  4) boundary trap: teleport ANY tagged team member (alive or dead) back to center if outside the box
-    //  5..7) team wipe: survival then kill everyone once the whole team is down
+    //  4..6) team wipe: survival then kill everyone once the whole team is down (runs BEFORE the
+    //        boundary trap below, so a wipe always resolves first in this tick's ordering)
+    //  7) boundary trap: teleport ANY tagged team member (alive or dead) back to center if outside the box
     var cmds = [];
     cmds.push('minecraft:kill @a[x=' + f.minX + ',y=' + f.minY + ',z=' + f.minZ +
       ',dx=' + f.sizeX + ',dy=' + f.sizeY + ',dz=' + f.sizeZ + ',' + tagExclusionsAll + ']');
@@ -463,12 +464,12 @@ function generate() {
     cmds.push('minecraft:execute as @a[tag=' + f.tag + '] if score @s deaths > @s lastdeaths run minecraft:gamemode spectator @s');
     cmds.push('minecraft:execute as @a[tag=' + f.tag + '] if score @s deaths > @s lastdeaths run minecraft:scoreboard players operation @s lastdeaths = @s deaths');
 
-    cmds.push('minecraft:execute as @a[tag=' + f.tag + '] unless entity @s[x=' + f.minX + ',y=' + f.minY + ',z=' + f.minZ +
-      ',dx=' + f.sizeX + ',dy=' + f.sizeY + ',dz=' + f.sizeZ + '] run minecraft:teleport @s ' + f.centerX + ' ' + f.centerY + ' ' + f.centerZ);
-
     cmds.push('minecraft:execute store success score ' + f.tag + '_wiped tmp if entity @a[tag=' + f.tag + ',gamemode=spectator] unless entity @a[tag=' + f.tag + ',gamemode=survival]');
     cmds.push('minecraft:execute if score ' + f.tag + '_wiped tmp matches 1 run minecraft:gamemode survival @a[tag=' + f.tag + ']');
     cmds.push('minecraft:execute if score ' + f.tag + '_wiped tmp matches 1 run minecraft:kill @a[tag=' + f.tag + ']');
+
+    cmds.push('minecraft:execute as @a[tag=' + f.tag + '] unless entity @s[x=' + f.minX + ',y=' + f.minY + ',z=' + f.minZ +
+      ',dx=' + f.sizeX + ',dy=' + f.sizeY + ',dz=' + f.sizeZ + '] run minecraft:teleport @s ' + f.centerX + ' ' + f.centerY + ' ' + f.centerZ);
 
     var rowZ = cb.z + idx * 2;
     var lines = setblockRow(cb.x, cb.y, rowZ, cmds);
