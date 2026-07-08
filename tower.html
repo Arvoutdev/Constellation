@@ -5,7 +5,7 @@
 <title>Tower Command Generator</title>
 <style>
 body { font-family: monospace; max-width: 900px; margin: 20px auto; padding: 0 12px; }
-label { display: inline-block; min-width: 140px; }
+label { display: inline-block; min-width: 190px; }
 input { font-family: monospace; width: 100px; margin-bottom: 6px; }
 input[type=text] { width: 260px; }
 .row { margin-bottom: 4px; }
@@ -19,6 +19,12 @@ button.copy { font-family: monospace; margin-bottom: 6px; cursor: pointer; }
 </head>
 <body>
 
+<h2>Boss - Wither Skeleton "Boss"</h2>
+<div id="bossWSOutput"></div>
+
+<h2>Boss - Stray "Boss"</h2>
+<div id="bossStrayOutput"></div>
+
 <h2>Setup</h2>
 <div class="row"><label>Start X</label><input type="number" id="sx" value="0"></div>
 <div class="row"><label>Start Y</label><input type="number" id="sy" value="64"></div>
@@ -30,9 +36,16 @@ button.copy { font-family: monospace; margin-bottom: 6px; cursor: pointer; }
 <div class="row"><label>Gap between floors</label><input type="number" id="gap" value="2"></div>
 <div class="row"><label>Tag name prefix</label><input type="text" id="teamPrefix" value="team"></div>
 <div class="row"><label>Mob list (comma sep)</label><input type="text" id="mobList" value="zombie, skeleton"></div>
-<div class="row"><button onclick="generate()">Generate commands</button></div>
+<div class="row"><label>Command block area X</label><input type="number" id="cbX" value="0"></div>
+<div class="row"><label>Command block area Y</label><input type="number" id="cbY" value="100"></div>
+<div class="row"><label>Command block area Z</label><input type="number" id="cbZ" value="0"></div>
+<div class="row"><button onclick="generateAll()">Generate commands</button></div>
+<p class="note">All repeating logic is now placed via /setblock instead of printed as text to hand-place. Each floor gets its own row of
+repeating command blocks laid out along +X, starting at the "Command block area" point above, one row per floor (2 blocks apart in Z
+so rows don't touch). They're placed as type=repeating but auto:0b - meaning NOT always active. You still need to power each row with
+redstone yourself (a lever + block, or a permanent redstone block on the first block block of each row) before anything will run.</p>
 
-<h2>Remove pad - standing here kills + un-tags (run BEFORE the spectator trap blocks)</h2>
+<h2>Remove pad - standing here kills + un-tags</h2>
 <div class="row"><label>Center X</label><input type="number" id="removeX" value="0"></div>
 <div class="row"><label>Center Y</label><input type="number" id="removeY" value="0"></div>
 <div class="row"><label>Center Z</label><input type="number" id="removeZ" value="0"></div>
@@ -40,7 +53,7 @@ button.copy { font-family: monospace; margin-bottom: 6px; cursor: pointer; }
 <div class="row"><button onclick="generateRemove()">Generate</button></div>
 <div id="removeOutput"></div>
 
-<h2>Add pad - standing here tags for floor 1 (run BEFORE the spectator trap blocks)</h2>
+<h2>Add pad - standing here tags for floor 1</h2>
 <div class="row"><label>Center X</label><input type="number" id="addX" value="0"></div>
 <div class="row"><label>Center Y</label><input type="number" id="addY" value="40"></div>
 <div class="row"><label>Center Z</label><input type="number" id="addZ" value="0"></div>
@@ -57,9 +70,10 @@ function copyText(id) {
 }
 
 function block(id, title, lines) {
+  var slashed = lines.map(function(l) { return l.charAt(0) === '/' ? l : '/' + l; });
   return '<h3>' + title + '</h3>' +
     '<button class="copy" onclick="copyText(\'' + id + '\')">Copy</button>' +
-    '<pre id="' + id + '">' + lines.join('\n') + '</pre>';
+    '<pre id="' + id + '">' + slashed.join('\n') + '</pre>';
 }
 
 function getNumFloors() {
@@ -68,12 +82,105 @@ function getNumFloors() {
 function getTeamPrefix() {
   return document.getElementById('teamPrefix').value.trim() || 'team';
 }
+function getCbOrigin() {
+  return {
+    x: parseInt(document.getElementById('cbX').value) || 0,
+    y: parseInt(document.getElementById('cbY').value) || 0,
+    z: parseInt(document.getElementById('cbZ').value) || 0
+  };
+}
+
+function floorTitleInfo(n) {
+  if (n === 8) return {text: 'FINAL BOSS', color: 'red'};
+  if (n > 8) return {text: 'FLOOR ' + n, color: 'red'};
+  if (n <= 2) return {text: 'FLOOR ' + n, color: 'green'};
+  if (n <= 4) return {text: 'FLOOR ' + n, color: 'yellow'};
+  return {text: 'FLOOR ' + n, color: '#FFA500'};
+}
 
 function boxArgs(cx, cy, cz, size) {
   var half = (size - 1) / 2;
   var minX = cx - half, minY = cy - half, minZ = cz - half;
   var d = size - 1;
   return 'x=' + minX + ',y=' + minY + ',z=' + minZ + ',dx=' + d + ',dy=' + d + ',dz=' + d;
+}
+
+// Command text can contain double quotes (CustomName:"Boss", enchant keys, etc) - these
+// must be escaped since the whole command becomes the value of a quoted Command:"..." tag.
+function escapeCmd(cmd) {
+  return cmd.replace(/"/g, '\\"');
+}
+
+// Places one repeating command block (NOT always active - needs redstone) holding `cmd`.
+function setblockRepeat(x, y, z, cmd) {
+  return 'minecraft:setblock ' + x + ' ' + y + ' ' + z +
+    ' minecraft:repeating_command_block[facing=up]{Command:"' + escapeCmd(cmd) + '",auto:0b}';
+}
+
+// Lays out a whole array of repeating commands as one row of command blocks along +X.
+function setblockRow(startX, y, z, commands) {
+  return commands.map(function(cmd, i) { return setblockRepeat(startX + i, y, z, cmd); });
+}
+
+// One-shot ordered sequences (like building a boss) need to run in order and only once -
+// a row of independent impulse blocks fired by the same redstone pulse does NOT guarantee
+// execution order. So: block 1 is a normal (impulse) command block needing its own redstone
+// trigger; blocks 2+ are chain command blocks, which only fire after the previous block in
+// the chain succeeds, guaranteeing the summon happens before anything tries to modify it.
+function setblockChainRow(startX, y, z, commands) {
+  return commands.map(function(cmd, i) {
+    var x = startX + i;
+    if (i === 0) {
+      return 'minecraft:setblock ' + x + ' ' + y + ' ' + z +
+        ' minecraft:command_block[facing=east]{Command:"' + escapeCmd(cmd) + '",auto:0b}';
+    }
+    return 'minecraft:setblock ' + x + ' ' + y + ' ' + z +
+      ' minecraft:chain_command_block[facing=east,conditional=false]{Command:"' + escapeCmd(cmd) + '",auto:1b}';
+  });
+}
+
+var bossWSCommands = [
+  'minecraft:summon minecraft:wither_skeleton ~ ~ ~ {CustomName:"Boss"}',
+  'minecraft:attribute @e[type=minecraft:wither_skeleton,name="Boss",limit=1] minecraft:scale base set 1.5',
+  'minecraft:attribute @e[type=minecraft:wither_skeleton,name="Boss",limit=1] minecraft:movement_speed base set 0.5',
+  'minecraft:attribute @e[type=minecraft:wither_skeleton,name="Boss",limit=1] minecraft:max_health base set 800',
+  'minecraft:data merge entity @e[type=minecraft:wither_skeleton,name="Boss",limit=1] {Health:800.0f}',
+  'minecraft:effect give @e[type=minecraft:wither_skeleton,name="Boss",limit=1] minecraft:jump_boost 1000000 1 true',
+  'minecraft:item replace entity @e[type=minecraft:wither_skeleton,name="Boss",limit=1] weapon.mainhand with minecraft:diamond_spear[minecraft:enchantments={"minecraft:knockback":10,"minecraft:unbreaking":255}]',
+  'minecraft:item replace entity @e[type=minecraft:wither_skeleton,name="Boss",limit=1] armor.head with minecraft:iron_helmet[minecraft:enchantments={"minecraft:unbreaking":255}]',
+  'minecraft:item replace entity @e[type=minecraft:wither_skeleton,name="Boss",limit=1] armor.chest with minecraft:iron_chestplate[minecraft:enchantments={"minecraft:unbreaking":255}]',
+  'minecraft:item replace entity @e[type=minecraft:wither_skeleton,name="Boss",limit=1] armor.legs with minecraft:iron_leggings[minecraft:enchantments={"minecraft:unbreaking":255}]',
+  'minecraft:item replace entity @e[type=minecraft:wither_skeleton,name="Boss",limit=1] armor.feet with minecraft:iron_boots[minecraft:enchantments={"minecraft:unbreaking":255}]'
+];
+
+var bossStrayCommands = [
+  'minecraft:summon minecraft:stray ~ ~ ~ {CustomName:"Boss"}',
+  'minecraft:attribute @e[type=minecraft:stray,name="Boss",limit=1] minecraft:scale base set 1.6',
+  'minecraft:attribute @e[type=minecraft:stray,name="Boss",limit=1] minecraft:movement_speed base set 0.1',
+  'minecraft:attribute @e[type=minecraft:stray,name="Boss",limit=1] minecraft:max_health base set 1200',
+  'minecraft:data merge entity @e[type=minecraft:stray,name="Boss",limit=1] {Health:1200.0f}',
+  'minecraft:item replace entity @e[type=minecraft:stray,name="Boss",limit=1] weapon.mainhand with minecraft:netherite_sword[minecraft:enchantments={"minecraft:flame":1,"minecraft:unbreaking":255}]',
+  'minecraft:item replace entity @e[type=minecraft:stray,name="Boss",limit=1] armor.head with minecraft:golden_helmet[minecraft:enchantments={"minecraft:unbreaking":255}]',
+  'minecraft:item replace entity @e[type=minecraft:stray,name="Boss",limit=1] armor.chest with minecraft:golden_chestplate[minecraft:enchantments={"minecraft:unbreaking":255}]',
+  'minecraft:item replace entity @e[type=minecraft:stray,name="Boss",limit=1] armor.legs with minecraft:golden_leggings[minecraft:enchantments={"minecraft:unbreaking":255}]',
+  'minecraft:item replace entity @e[type=minecraft:stray,name="Boss",limit=1] armor.feet with minecraft:golden_boots[minecraft:enchantments={"minecraft:unbreaking":255}]'
+];
+
+function generateBoss() {
+  var cb = getCbOrigin();
+  var wsZ = cb.z - 8;
+  var strayZ = cb.z - 6;
+
+  var wsLines = setblockChainRow(cb.x, cb.y, wsZ, bossWSCommands);
+  var strayLines = setblockChainRow(cb.x, cb.y, strayZ, bossStrayCommands);
+
+  document.getElementById('bossWSOutput').innerHTML = block('bossWSCmd',
+    'Row at Z=' + wsZ + '. First block is impulse (needs its own redstone pulse - a button ' +
+    'works well). The rest are chain blocks that fire automatically right after, in order, ' +
+    'so the boss always exists before its stats/gear get set.', wsLines);
+
+  document.getElementById('bossStrayOutput').innerHTML = block('bossStrayCmd',
+    'Row at Z=' + strayZ + '. Same setup: first block impulse, rest chained.', strayLines);
 }
 
 function generateRemove() {
@@ -84,14 +191,18 @@ function generateRemove() {
   var numFloors = getNumFloors();
   var teamPrefix = getTeamPrefix();
   var sel = boxArgs(cx, cy, cz, size);
+  var cb = getCbOrigin();
 
-  var lines = [];
+  var cmds = [];
   for (var i = 1; i <= numFloors; i++) {
-    lines.push('execute as @a[' + sel + '] run tag @s remove ' + teamPrefix + i);
+    cmds.push('minecraft:execute as @a[' + sel + '] run minecraft:tag @s remove ' + teamPrefix + i);
   }
-  lines.push('execute as @a[' + sel + '] run gamemode survival @s');
-  lines.push('execute as @a[' + sel + '] run kill @s');
-  document.getElementById('removeOutput').innerHTML = block('removeCmd', 'One command block per line, repeating, always active', lines);
+  cmds.push('minecraft:execute as @a[' + sel + '] run minecraft:gamemode survival @s');
+  cmds.push('minecraft:execute as @a[' + sel + '] run minecraft:kill @s');
+
+  var lines = setblockRow(cb.x, cb.y, cb.z - 4, cmds);
+  document.getElementById('removeOutput').innerHTML = block('removeCmd',
+    'Places this row at Z=' + (cb.z - 4) + '. Power the first block with redstone to turn it on.', lines);
 }
 
 function generateAdd() {
@@ -101,11 +212,18 @@ function generateAdd() {
   var size = parseInt(document.getElementById('addSize').value);
   var teamPrefix = getTeamPrefix();
   var sel = boxArgs(cx, cy, cz, size);
+  var cb = getCbOrigin();
 
-  document.getElementById('addOutput').innerHTML = block('addCmd', 'One command block per line, repeating, always active', [
-    'execute as @a[' + sel + '] run tag @s add ' + teamPrefix + '1',
-    'execute as @a[' + sel + '] run scoreboard players set @s lastdeaths 0'
-  ]);
+  var t1 = floorTitleInfo(1);
+  var cmds = [
+    'minecraft:execute as @a[' + sel + '] run minecraft:tag @s add ' + teamPrefix + '1',
+    'minecraft:execute as @a[' + sel + '] run minecraft:scoreboard players set @s lastdeaths 0',
+    'minecraft:execute as @a[' + sel + '] run minecraft:title @s title {"text":"' + t1.text + '","color":"' + t1.color + '"}'
+  ];
+
+  var lines = setblockRow(cb.x, cb.y, cb.z - 2, cmds);
+  document.getElementById('addOutput').innerHTML = block('addCmd',
+    'Places this row at Z=' + (cb.z - 2) + '. Power the first block with redstone to turn it on.', lines);
 }
 
 function generate() {
@@ -119,6 +237,7 @@ function generate() {
   var gap = parseInt(document.getElementById('gap').value);
   var teamPrefix = getTeamPrefix();
   var mobs = document.getElementById('mobList').value.split(',').map(function(m){return m.trim();}).filter(function(m){return m.length > 0;});
+  var cb = getCbOrigin();
 
   var minX = Math.min(sx, ex), maxX = Math.max(sx, ex);
   var minZ = Math.min(sz, ez), maxZ = Math.max(sz, ez);
@@ -137,7 +256,13 @@ function generate() {
       sizeX: sizeX, sizeY: floorMaxY - floorMinY, sizeZ: sizeZ,
       centerX: Math.round((minX + maxX) / 2),
       centerY: floorMinY + 1,
-      centerZ: Math.round((minZ + maxZ) / 2)
+      centerZ: Math.round((minZ + maxZ) / 2),
+      corners: [
+        [minX + 1, floorMinY + 1, minZ + 1],
+        [maxX - 1, floorMinY + 1, minZ + 1],
+        [maxX - 1, floorMinY + 1, maxZ - 1],
+        [minX + 1, floorMinY + 1, maxZ - 1]
+      ]
     });
   }
 
@@ -145,61 +270,75 @@ function generate() {
   var counter = 0;
   function nextId() { counter++; return 'cmd' + counter; }
 
-  // ---- one-time setup ----
+  // ---- one-time setup (not repeating, plain text) ----
   html += '<h2>One-time setup (run once)</h2>';
-  html += '<p class="note">Tags don\'t need to be registered ahead of time like teams do - this is just the death-tracking objectives.</p>';
   html += block(nextId(), 'Objectives', [
-    'scoreboard objectives add deaths deathCount',
-    'scoreboard objectives add lastdeaths dummy',
-    'scoreboard objectives add tmp dummy'
+    'minecraft:scoreboard objectives add deaths deathCount',
+    'minecraft:scoreboard objectives add lastdeaths dummy',
+    'minecraft:scoreboard objectives add tmp dummy'
   ]);
 
   // ---- per floor ----
+  var tagExclusionsAll = floors.map(function(fl) { return 'tag=!' + fl.tag; }).join(',');
+
   floors.forEach(function(f, idx) {
     html += '<div class="floor-block">';
     html += '<h2>Floor ' + f.n + ' (tag: ' + f.tag + ')</h2>';
     html += '<p class="note">Bounds: (' + f.minX + ', ' + f.minY + ', ' + f.minZ + ') to (' +
       f.maxX + ', ' + f.maxY + ', ' + f.maxZ + ')  |  Center: (' + f.centerX + ', ' + f.centerY + ', ' + f.centerZ + ')</p>';
 
-    var tagExclusions = floors.map(function(fl) { return 'tag=!' + fl.tag; }).join(',');
-    html += block(nextId(), 'Kill anyone not tagged for any floor, in this floor\'s box (replace them yourself)', [
-      'kill @a[x=' + f.minX + ',y=' + f.minY + ',z=' + f.minZ +
-        ',dx=' + f.sizeX + ',dy=' + f.sizeY + ',dz=' + f.sizeZ +
-        ',' + tagExclusions + ']'
-    ]);
+    // All 4 repeating behaviours for this floor, in one row:
+    //  1) kill any untagged ("normal") player found anywhere in this floor's box
+    //  2..3) death -> spectator detection
+    //  4) boundary trap: teleport ANY tagged team member (alive or dead) back to center if outside the box
+    //  5..7) team wipe: survival then kill everyone once the whole team is down
+    var cmds = [];
+    cmds.push('minecraft:kill @a[x=' + f.minX + ',y=' + f.minY + ',z=' + f.minZ +
+      ',dx=' + f.sizeX + ',dy=' + f.sizeY + ',dz=' + f.sizeZ + ',' + tagExclusionsAll + ']');
 
-    html += block(nextId(), 'Detect death -> spectator (2 commands, run repeating)', [
-      'execute as @a[tag=' + f.tag + '] if score @s deaths > @s lastdeaths run gamemode spectator @s',
-      'execute as @a[tag=' + f.tag + '] if score @s deaths > @s lastdeaths run scoreboard players operation @s lastdeaths = @s deaths'
-    ]);
+    cmds.push('minecraft:execute as @a[tag=' + f.tag + '] if score @s deaths > @s lastdeaths run minecraft:gamemode spectator @s');
+    cmds.push('minecraft:execute as @a[tag=' + f.tag + '] if score @s deaths > @s lastdeaths run minecraft:scoreboard players operation @s lastdeaths = @s deaths');
 
-    html += block(nextId(), 'Spectator trap - keep dead players inside the floor (run repeating)', [
-      'execute as @a[tag=' + f.tag + ',gamemode=spectator] unless entity @s[x=' + f.minX + ',y=' + f.minY + ',z=' + f.minZ +
-        ',dx=' + f.sizeX + ',dy=' + f.sizeY + ',dz=' + f.sizeZ + '] run teleport @s ' + f.centerX + ' ' + f.centerY + ' ' + f.centerZ
-    ]);
+    cmds.push('minecraft:execute as @a[tag=' + f.tag + '] unless entity @s[x=' + f.minX + ',y=' + f.minY + ',z=' + f.minZ +
+      ',dx=' + f.sizeX + ',dy=' + f.sizeY + ',dz=' + f.sizeZ + '] run minecraft:teleport @s ' + f.centerX + ' ' + f.centerY + ' ' + f.centerZ);
 
-    html += block(nextId(), 'Team wipe -> survival then kill everyone (optional, run repeating)', [
-      'execute store success score ' + f.tag + '_wiped tmp if entity @a[tag=' + f.tag + ',gamemode=spectator] unless entity @a[tag=' + f.tag + ',gamemode=survival]',
-      'execute if score ' + f.tag + '_wiped tmp matches 1 run gamemode survival @a[tag=' + f.tag + ']',
-      'execute if score ' + f.tag + '_wiped tmp matches 1 run kill @a[tag=' + f.tag + ']'
-    ]);
+    cmds.push('minecraft:execute store success score ' + f.tag + '_wiped tmp if entity @a[tag=' + f.tag + ',gamemode=spectator] unless entity @a[tag=' + f.tag + ',gamemode=survival]');
+    cmds.push('minecraft:execute if score ' + f.tag + '_wiped tmp matches 1 run minecraft:gamemode survival @a[tag=' + f.tag + ']');
+    cmds.push('minecraft:execute if score ' + f.tag + '_wiped tmp matches 1 run minecraft:kill @a[tag=' + f.tag + ']');
 
+    var rowZ = cb.z + idx * 2;
+    var lines = setblockRow(cb.x, cb.y, rowZ, cmds);
+    html += block(nextId(), 'Repeating logic for this floor - placed as a row at Z=' + rowZ +
+      ' (kill non-team players, death detection, boundary trap for the whole team, team wipe). ' +
+      'Power the first block with redstone to turn this floor on.', lines);
+
+    // ---- advance to next floor: ordered one-shot sequence (chain), stacked at Y+1 ----
     if (idx > 0) {
       var prev = floors[idx - 1];
-      html += block(nextId(), 'Advance previous floor\'s players to this floor (run once, when they clear ' + prev.tag + ')', [
-        'execute as @a[tag=' + prev.tag + '] run gamemode survival @s',
-        'execute as @a[tag=' + prev.tag + '] run effect give @s instant_health 1 255 true',
-        'tag @a[tag=' + prev.tag + '] add ' + f.tag,
-        'tag @a[tag=' + prev.tag + '] remove ' + prev.tag,
-        'execute as @a[tag=' + f.tag + '] run teleport @s ' + f.centerX + ' ' + f.centerY + ' ' + f.centerZ
-      ]);
+      var t = floorTitleInfo(f.n);
+      var advCmds = [
+        'minecraft:execute as @a[tag=' + prev.tag + '] run minecraft:gamemode survival @s',
+        'minecraft:execute as @a[tag=' + prev.tag + '] run minecraft:effect give @s minecraft:instant_health 1 255 true',
+        'minecraft:tag @a[tag=' + prev.tag + '] add ' + f.tag,
+        'minecraft:tag @a[tag=' + prev.tag + '] remove ' + prev.tag,
+        'minecraft:execute as @a[tag=' + f.tag + '] run minecraft:teleport @s ' + f.centerX + ' ' + f.centerY + ' ' + f.centerZ,
+        'minecraft:execute as @a[tag=' + f.tag + '] run minecraft:title @s title {"text":"' + t.text + '","color":"' + t.color + '"}'
+      ];
+      var advLines = setblockChainRow(cb.x, cb.y + 1, rowZ, advCmds);
+      html += block(nextId(), 'Advance previous floor\'s players to this floor (run once, when they clear ' + prev.tag +
+        ') - placed as a row at Y=' + (cb.y + 1) + ', Z=' + rowZ + '. First block impulse (needs a manual redstone ' +
+        'trigger, e.g. a button), rest chained so heal -> retag -> teleport -> title happen strictly in order.', advLines);
     }
 
+    // ---- mob spawns, cycling through the floor's 4 corners - one-shot sequence (chain), stacked at Y+2 ----
     if (mobs.length > 0) {
-      var mobLines = mobs.map(function(m) {
-        return 'summon ' + m + ' ' + f.centerX + ' ' + f.centerY + ' ' + f.centerZ;
+      var mobCmds = mobs.map(function(m, mi) {
+        var c = f.corners[mi % 4];
+        return 'minecraft:summon minecraft:' + m.replace('minecraft:', '') + ' ' + c[0] + ' ' + c[1] + ' ' + c[2];
       });
-      html += block(nextId(), 'Spawn mobs at floor center (duplicate with different coords for spread)', mobLines);
+      var mobLines = setblockChainRow(cb.x, cb.y + 2, rowZ, mobCmds);
+      html += block(nextId(), 'Spawn mobs, one per corner (corner reused after 4) - placed as a row at Y=' + (cb.y + 2) +
+        ', Z=' + rowZ + '. First block impulse (needs a manual redstone trigger), rest chained.', mobLines);
     }
 
     html += '</div>';
@@ -208,9 +347,14 @@ function generate() {
   document.getElementById('output').innerHTML = html;
 }
 
-generate();
-generateRemove();
-generateAdd();
+function generateAll() {
+  generate();
+  generateRemove();
+  generateAdd();
+  generateBoss();
+}
+
+generateAll();
 </script>
 </body>
 </html>
