@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Task Manager</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+  :root {
+    --bg: #f5f5f4;
+    --card: #ffffff;
+    --border: #e2e2e0;
+    --border-strong: #cfcfcb;
+    --text: #1f1f1d;
+    --text-secondary: #6b6b66;
+    --text-muted: #9a9a94;
+    --accent: #3768c9;
+    --accent-bg: #e8effa;
+    --success: #1d9e75;
+    --success-bg: #e1f5ee;
+    --warning: #ba7517;
+    --warning-bg: #faeeda;
+    --danger: #c9432f;
+    --danger-bg: #faece7;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: var(--text-secondary); margin: 0 0 20px; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 18px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px; }
+  .tab { flex: 1; text-align: center; padding: 8px 10px; font-size: 13px; font-weight: 500; border-radius: 7px; cursor: pointer; color: var(--text-secondary); user-select: none; }
+  .tab.active { background: var(--accent-bg); color: var(--accent); }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+
+  .add-btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; padding: 12px; border-radius: var(--radius);
+    border: 1px dashed var(--border-strong); background: transparent;
+    color: var(--text-secondary); font-size: 14px; cursor: pointer; margin-bottom: 16px;
+  }
+  .add-btn:hover { background: var(--card); color: var(--text); }
+
+  label { font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 5px; margin-top: 12px; }
+  label:first-child { margin-top: 0; }
+  input[type=text], input[type=number] {
+    width: 100%; padding: 9px 10px; border-radius: 7px; border: 1px solid var(--border-strong);
+    font-size: 14px; background: #fff; color: var(--text);
+  }
+  .duration-row { display: flex; gap: 10px; }
+  .duration-row > div { flex: 1; }
+
+  .days-picker { display: flex; gap: 6px; margin-top: 4px; }
+  .day-chip {
+    flex: 1; text-align: center; padding: 8px 0; border-radius: 7px; border: 1px solid var(--border-strong);
+    font-size: 12px; cursor: pointer; color: var(--text-secondary); user-select: none;
+  }
+  .day-chip.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .form-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .btn {
+    padding: 9px 14px; border-radius: 7px; border: 1px solid var(--border-strong);
+    background: #fff; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text);
+  }
+  .btn:hover { background: #f2f2f0; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: #2d56a3; }
+  .btn.danger { color: var(--danger); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .task-item { display: flex; flex-direction: column; gap: 10px; }
+  .task-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .task-name { font-size: 15px; font-weight: 600; margin: 0; }
+  .task-meta { font-size: 12px; color: var(--text-secondary); margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: var(--accent-bg); color: var(--accent); font-weight: 500; }
+  .badge.done { background: var(--success-bg); color: var(--success); }
+  .badge.paused { background: var(--warning-bg); color: var(--warning); }
+  .badge.locked { background: #eee; color: var(--text-muted); }
+
+  .progress-bar { width: 100%; height: 6px; background: #eee; border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); transition: width 0.3s linear; }
+  .progress-fill.done { background: var(--success); }
+  .progress-fill.paused { background: var(--warning); }
+
+  .task-bottom { display: flex; align-items: center; justify-content: space-between; }
+  .timer { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .timer.done { color: var(--success); }
+  .controls { display: flex; gap: 6px; }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border-strong);
+    background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+  .icon-btn:hover { background: #f2f2f0; }
+  .icon-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .icon-btn.danger { color: var(--danger); }
+  .icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .empty { text-align: center; color: var(--text-muted); font-size: 14px; padding: 40px 10px; }
+  .del-x { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 2px 4px; }
+  .del-x:hover { color: var(--danger); }
+  .lock-note { font-size: 12px; color: var(--warning); background: var(--warning-bg); padding: 8px 10px; border-radius: 7px; margin-bottom: 12px; }
+  .saved-flash { font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Task manager</h1>
+  <p class="sub" id="dateLine"></p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="today">Today</div>
+    <div class="tab" data-tab="all">All tasks</div>
+  </div>
+
+  <div id="lockNote" style="display:none" class="lock-note"></div>
+
+  <button class="add-btn" id="showFormBtn">+ New task</button>
+
+  <div class="card" id="formCard" style="display:none">
+    <label>Task name</label>
+    <input type="text" id="taskName" placeholder="e.g. Morning stretch">
+
+    <label>Days</label>
+    <div class="days-picker" id="daysPicker">
+      <div class="day-chip" data-day="1">M</div>
+      <div class="day-chip" data-day="2">T</div>
+      <div class="day-chip" data-day="3">W</div>
+      <div class="day-chip" data-day="4">T</div>
+      <div class="day-chip" data-day="5">F</div>
+      <div class="day-chip" data-day="6">S</div>
+      <div class="day-chip" data-day="0">S</div>
+    </div>
+
+    <div class="duration-row">
+      <div>
+        <label>Hours</label>
+        <input type="number" id="durHours" min="0" max="12" value="0">
+      </div>
+      <div>
+        <label>Minutes</label>
+        <input type="number" id="durMinutes" min="0" max="59" value="25">
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn primary" id="saveTaskBtn">Save task</button>
+      <button class="btn" id="cancelFormBtn">Cancel</button>
+    </div>
+  </div>
+
+  <div id="taskList"></div>
+  <div class="saved-flash" id="savedFlash"></div>
+</div>
+
+<script>
+const DAY_SHORT = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+/* ── Firebase init — same project as the reference task list ── */
+const firebaseConfig = {
+  apiKey:            "AIzaSyDFMccIwyJsqDAjj-Cz_t0XAzsUr5-Q9K0",
+  authDomain:        "tasklight-4f0d1.firebaseapp.com",
+  databaseURL:       "https://tasklight-4f0d1-default-rtdb.firebaseio.com",
+  projectId:         "tasklight-4f0d1",
+  storageBucket:     "tasklight-4f0d1.firebasestorage.app",
+  messagingSenderId: "65761024377",
+  appId:             "1:65761024377:web:0336b828ce12c420a077a8"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+// Separate node from the reference app's flat "tasks" list so the two don't collide.
+const schedulerRef = db.ref('scheduledTasks');
+
+let tasks = [];       // each: {id, name, days:[0-6], durationSec, createdAt,
+                       //        status, remainingSeconds, runningSince, lastCompletedDate}
+let activeTab = 'today';
+let selectedDays = new Set();
+let tickInterval = null;
+let suppressNextRender = false;
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function fmtTime(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec/3600);
+  const m = Math.floor((sec%3600)/60);
+  const s = sec%60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+function fmtDuration(sec) {
+  const h = Math.floor(sec/3600);
+  const m = Math.round((sec%3600)/60);
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+}
+
+/* ── Firebase read/write helpers ── */
+function writeTask(task) {
+  schedulerRef.child(task.id).set(task);
+}
+function patchTask(id, changes) {
+  schedulerRef.child(id).update(changes);
+}
+function removeTask(id) {
+  schedulerRef.child(id).remove();
+}
+
+function flashSaved() {
+  const el = document.getElementById('savedFlash');
+  el.textContent = 'Synced';
+  clearTimeout(flashSaved._t);
+  flashSaved._t = setTimeout(() => { el.textContent = ''; }, 1500);
+}
+
+function resetStaleCompletions() {
+  const today = todayStr();
+  tasks.forEach(t => {
+    if (t.status === 'done' && t.lastCompletedDate !== today) {
+      patchTask(t.id, { status: 'idle', remainingSeconds: t.durationSec, runningSince: null });
+    }
+  });
+}
+
+function getActiveTaskId() {
+  const found = tasks.find(t => t.status === 'running' || t.status === 'paused');
+  return found ? found.id : null;
+}
+
+function isScheduledToday(task) {
+  return task.days.includes(new Date().getDay());
+}
+
+function currentRemaining(task) {
+  if (task.status === 'running' && task.runningSince) {
+    const elapsed = (Date.now() - task.runningSince) / 1000;
+    return Math.max(0, task.remainingSeconds - elapsed);
+  }
+  return task.remainingSeconds;
+}
+
+function startTask(id) {
+  const activeId = getActiveTaskId();
+  if (activeId && activeId !== id) return;
+  patchTask(id, { status: 'running', runningSince: Date.now() });
+  flashSaved();
+}
+
+function pauseTask(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task || task.status !== 'running') return;
+  patchTask(id, { status: 'paused', remainingSeconds: currentRemaining(task), runningSince: null });
+  flashSaved();
+}
+
+function resumeTask(id) {
+  const activeId = getActiveTaskId();
+  if (activeId && activeId !== id) return;
+  patchTask(id, { status: 'running', runningSince: Date.now() });
+  flashSaved();
+}
+
+function completeTask(id) {
+  patchTask(id, { status: 'done', runningSince: null, remainingSeconds: 0, lastCompletedDate: todayStr() });
+  flashSaved();
+}
+
+function resetTask(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  patchTask(id, { status: 'idle', remainingSeconds: task.durationSec, runningSince: null });
+  flashSaved();
+}
+
+function deleteTask(id) {
+  removeTask(id);
+  flashSaved();
+}
+
+function ensureTicking() {
+  if (tickInterval) return;
+  tickInterval = setInterval(() => {
+    const activeId = getActiveTaskId();
+    if (activeId) {
+      const task = tasks.find(t => t.id === activeId);
+      if (task && task.status === 'running') {
+        const rem = currentRemaining(task);
+        if (rem <= 0) {
+          completeTask(activeId);
+        } else {
+          renderTimersOnly();
+        }
+      }
+    }
+  }, 1000);
+}
+
+function renderTimersOnly() {
+  document.querySelectorAll('[data-timer-id]').forEach(el => {
+    const id = el.getAttribute('data-timer-id');
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    const rem = currentRemaining(task);
+    el.textContent = fmtTime(rem);
+    const fill = document.querySelector(`[data-fill-id="${id}"]`);
+    if (fill) {
+      const pct = 100 - (rem / task.durationSec * 100);
+      fill.style.width = Math.min(100, Math.max(0, pct)) + '%';
+    }
+  });
+}
+
+function renderLockNote() {
+  const activeId = getActiveTaskId();
+  const note = document.getElementById('lockNote');
+  if (activeId) {
+    const task = tasks.find(t => t.id === activeId);
+    note.style.display = 'block';
+    note.textContent = `"${task.name}" is in progress — finish it before starting another task.`;
+  } else {
+    note.style.display = 'none';
+  }
+}
+
+function taskCardHtml(task) {
+  const activeId = getActiveTaskId();
+  const isLockedByOther = activeId && activeId !== task.id;
+  const rem = currentRemaining(task);
+  const pct = task.durationSec > 0 ? Math.min(100, Math.max(0, 100 - (rem / task.durationSec * 100))) : 0;
+
+  let badge = '';
+  if (task.status === 'done') badge = '<span class="badge done">Done today</span>';
+  else if (task.status === 'paused') badge = '<span class="badge paused">Paused</span>';
+  else if (task.status === 'running') badge = '<span class="badge">In progress</span>';
+  else if (isLockedByOther) badge = '<span class="badge locked">Locked</span>';
+
+  const dayBadges = task.days.slice().sort((a,b)=>a-b).map(d => DAY_SHORT[d]).join(' · ');
+
+  let controls = '';
+  if (task.status === 'idle') {
+    controls = `<button class="icon-btn primary" ${isLockedByOther ? 'disabled' : ''} onclick="startTask('${task.id}')" aria-label="Start">▶</button>`;
+  } else if (task.status === 'running') {
+    controls = `<button class="icon-btn" onclick="pauseTask('${task.id}')" aria-label="Pause">⏸</button>`;
+  } else if (task.status === 'paused') {
+    controls = `<button class="icon-btn primary" onclick="resumeTask('${task.id}')" aria-label="Resume">▶</button>
+                <button class="icon-btn" onclick="resetTask('${task.id}')" aria-label="Reset">↺</button>`;
+  } else if (task.status === 'done') {
+    controls = `<button class="icon-btn" onclick="resetTask('${task.id}')" aria-label="Reset">↺</button>`;
+  }
+
+  return `
+  <div class="card task-item">
+    <div class="task-top">
+      <div>
+        <p class="task-name">${escapeHtml(task.name)}</p>
+        <div class="task-meta">
+          <span>${dayBadges}</span>
+          <span>${fmtDuration(task.durationSec)}</span>
+          ${badge}
+        </div>
+      </div>
+      <button class="del-x" onclick="deleteTask('${task.id}')" title="Delete task">✕</button>
+    </div>
+    <div class="progress-bar"><div class="progress-fill ${task.status === 'done' ? 'done' : task.status === 'paused' ? 'paused' : ''}" data-fill-id="${task.id}" style="width:${pct}%"></div></div>
+    <div class="task-bottom">
+      <div class="timer ${task.status === 'done' ? 'done' : ''}" data-timer-id="${task.id}">${fmtTime(rem)}</div>
+      <div class="controls">${controls}</div>
+    </div>
+  </div>`;
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function render() {
+  renderLockNote();
+  const list = document.getElementById('taskList');
+  let visible = activeTab === 'today' ? tasks.filter(isScheduledToday) : tasks.slice();
+
+  if (visible.length === 0) {
+    list.innerHTML = `<div class="empty">${activeTab === 'today' ? 'No tasks scheduled for today.' : 'No tasks yet. Add one to get started.'}</div>`;
+    return;
+  }
+
+  const activeId = getActiveTaskId();
+  visible.sort((a, b) => {
+    if (a.id === activeId) return -1;
+    if (b.id === activeId) return 1;
+    if (a.status === 'done' && b.status !== 'done') return 1;
+    if (b.status === 'done' && a.status !== 'done') return -1;
+    return 0;
+  });
+
+  list.innerHTML = visible.map(taskCardHtml).join('');
+  ensureTicking();
+}
+
+function setDateLine() {
+  const d = new Date();
+  document.getElementById('dateLine').textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    activeTab = tab.getAttribute('data-tab');
+    render();
+  });
+});
+
+document.getElementById('showFormBtn').addEventListener('click', () => {
+  document.getElementById('formCard').style.display = 'block';
+  document.getElementById('showFormBtn').style.display = 'none';
+});
+document.getElementById('cancelFormBtn').addEventListener('click', resetForm);
+
+document.querySelectorAll('.day-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const day = parseInt(chip.getAttribute('data-day'));
+    if (selectedDays.has(day)) { selectedDays.delete(day); chip.classList.remove('selected'); }
+    else { selectedDays.add(day); chip.classList.add('selected'); }
+  });
+});
+
+function resetForm() {
+  document.getElementById('taskName').value = '';
+  document.getElementById('durHours').value = 0;
+  document.getElementById('durMinutes').value = 25;
+  selectedDays.clear();
+  document.querySelectorAll('.day-chip').forEach(c => c.classList.remove('selected'));
+  document.getElementById('formCard').style.display = 'none';
+  document.getElementById('showFormBtn').style.display = 'flex';
+}
+
+document.getElementById('saveTaskBtn').addEventListener('click', () => {
+  const name = document.getElementById('taskName').value.trim();
+  const hours = parseInt(document.getElementById('durHours').value) || 0;
+  const minutes = parseInt(document.getElementById('durMinutes').value) || 0;
+  const durationSec = (hours * 3600) + (minutes * 60);
+
+  if (!name) { alert('Please enter a task name.'); return; }
+  if (selectedDays.size === 0) { alert('Please select at least one day.'); return; }
+  if (durationSec <= 0) { alert('Please set a duration greater than zero.'); return; }
+
+  const id = 'task_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  writeTask({
+    id, name, days: Array.from(selectedDays), durationSec, createdAt: Date.now(),
+    status: 'idle', remainingSeconds: durationSec, runningSince: null, lastCompletedDate: null
+  });
+  flashSaved();
+  resetForm();
+});
+
+/* ── Live sync — re-renders on every remote or local change ── */
+schedulerRef.on('value', snapshot => {
+  const data = snapshot.val();
+  tasks = data ? Object.values(data) : [];
+  resetStaleCompletions();
+  render();
+});
+
+setDateLine();
+</script>
+</body>
+</html>
