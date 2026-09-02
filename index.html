@@ -1,0 +1,1816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arviture Accelerated Learning — Tutoring Built Around Your Student</title>
+<meta name="description" content="Arviture matches K-12 students with tutors tailored to their needs and gives every family access to a 40,000+ worksheet library.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   Arviture Accelerated Learning — Shared Styles
+   Palette: navy #1B2A4A, blue #3B5EA6, yellow #F5B700,
+            paper #FAF9F5, ink #22252B, rule #C9CFDC
+   Type: 'Fraunces' (display serif) + 'Inter' (body/UI)
+   ============================================================ */
+
+:root {
+  --navy: #1B2A4A;
+  --navy-deep: #101B33;
+  --blue: #3B5EA6;
+  --blue-soft: #E7ECF7;
+  --yellow: #F5B700;
+  --yellow-deep: #D89E00;
+  --paper: #FAF9F5;
+  --paper-dim: #F1EFE7;
+  --ink: #22252B;
+  --ink-soft: #565B68;
+  --rule: #C9CFDC;
+  --white: #FFFFFF;
+
+  --serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: var(--sans);
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+img { max-width: 100%; display: block; }
+
+a { color: inherit; }
+
+h1, h2, h3, h4 {
+  font-family: var(--serif);
+  font-weight: 600;
+  line-height: 1.12;
+  margin: 0 0 0.5em 0;
+  color: var(--navy);
+  letter-spacing: -0.01em;
+}
+
+h1 { font-size: clamp(2.4rem, 5vw, 4.1rem); font-weight: 500; }
+h2 { font-size: clamp(1.9rem, 3.4vw, 2.7rem); }
+h3 { font-size: 1.35rem; }
+
+p { margin: 0 0 1em 0; color: var(--ink-soft); }
+
+.container {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* ---------- Focus & motion ---------- */
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 3px solid var(--yellow-deep);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+/* ---------- Top bar / marquee ---------- */
+.topbar {
+  background: var(--navy-deep);
+  color: var(--paper);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  padding: 8px 0;
+}
+.topbar .container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.topbar span.dot { color: var(--yellow); margin: 0 8px; }
+
+/* ---------- Header ---------- */
+header.site-header {
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+.nav-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 32px;
+  max-width: 1160px;
+  margin: 0 auto;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+.brand-name {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.28rem;
+  color: var(--navy);
+  line-height: 1.05;
+}
+.brand-name small {
+  display: block;
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--blue);
+  margin-top: 2px;
+}
+
+nav.primary-nav {
+  display: flex;
+  align-items: center;
+  gap: 34px;
+}
+nav.primary-nav a {
+  text-decoration: none;
+  color: var(--ink);
+  font-size: 0.97rem;
+  font-weight: 500;
+  padding-bottom: 3px;
+  border-bottom: 2px solid transparent;
+}
+nav.primary-nav a:hover { border-bottom-color: var(--yellow); }
+nav.primary-nav a.current { color: var(--navy); border-bottom-color: var(--navy); font-weight: 600; }
+
+.nav-cta {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 0.96rem;
+  padding: 13px 26px;
+  border-radius: 3px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.btn:active { transform: translateY(1px); }
+
+.btn-primary {
+  background: var(--yellow);
+  color: var(--navy-deep);
+  border-color: var(--yellow);
+}
+.btn-primary:hover { background: var(--yellow-deep); border-color: var(--yellow-deep); }
+
+.btn-outline {
+  background: transparent;
+  color: var(--navy);
+  border-color: var(--navy);
+}
+.btn-outline:hover { background: var(--navy); color: var(--paper); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--navy);
+  border: none;
+  padding: 8px 4px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.btn-lg { padding: 16px 34px; font-size: 1.02rem; }
+
+/* ---------- Hero ---------- */
+.hero {
+  background: var(--navy);
+  color: var(--paper);
+  position: relative;
+  overflow: hidden;
+  border-bottom: 6px solid var(--yellow);
+}
+.hero .container {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 56px;
+  align-items: center;
+  padding-top: 84px;
+  padding-bottom: 84px;
+}
+.hero-eyebrow {
+  color: var(--yellow);
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 18px;
+}
+.hero h1 { color: var(--paper); }
+.hero h1 em {
+  font-style: normal;
+  color: var(--yellow);
+}
+.hero p.lead {
+  color: #C9D2E6;
+  font-size: 1.15rem;
+  max-width: 46ch;
+  margin-top: 18px;
+}
+.hero-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 34px;
+  flex-wrap: wrap;
+}
+.hero-actions .btn-outline { color: var(--paper); border-color: #4C5D82; }
+.hero-actions .btn-outline:hover { background: var(--paper); color: var(--navy); border-color: var(--paper); }
+
+.hero-visual {
+  position: relative;
+}
+
+/* ---------- Report-card style stat strip ---------- */
+.stat-strip {
+  background: var(--yellow);
+  border-bottom: 1px solid var(--rule);
+}
+.stat-strip .container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+.stat-cell {
+  padding: 30px 20px;
+  text-align: left;
+  border-left: 1px solid rgba(27,42,74,0.18);
+}
+.stat-cell:first-child { border-left: none; }
+.stat-num {
+  font-family: var(--serif);
+  font-size: 2.3rem;
+  color: var(--navy-deep);
+  font-weight: 600;
+  line-height: 1;
+}
+.stat-label {
+  font-size: 0.84rem;
+  color: var(--navy-deep);
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+/* ---------- Sections ---------- */
+section { padding: 88px 0; }
+.section-paper { background: var(--paper); }
+.section-dim { background: var(--paper-dim); }
+.section-navy { background: var(--navy); color: var(--paper); }
+.section-navy h2, .section-navy h3 { color: var(--paper); }
+.section-navy p { color: #C9D2E6; }
+
+.section-head {
+  max-width: 640px;
+  margin-bottom: 52px;
+}
+.section-head.center { margin-left: auto; margin-right: auto; text-align: center; }
+.kicker {
+  color: var(--blue);
+  font-weight: 600;
+  font-size: 0.92rem;
+  margin-bottom: 10px;
+}
+
+/* ---------- Ruled "worksheet" motif ---------- */
+.ruled {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 31px,
+    var(--rule) 32px
+  );
+  position: relative;
+}
+.ruled::before {
+  content: "";
+  position: absolute;
+  left: 46px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #E7A6A6;
+  opacity: 0.55;
+}
+
+/* ---------- Feature grid ---------- */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 40px;
+}
+.feature {
+  border-top: 3px solid var(--navy);
+  padding-top: 20px;
+}
+.feature .num {
+  font-family: var(--serif);
+  color: var(--blue);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.feature h3 { margin-bottom: 10px; }
+.feature p { font-size: 0.97rem; }
+
+/* ---------- Two-column with illustration ---------- */
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+}
+.split.reverse .split-visual { order: 2; }
+.split-visual svg { width: 100%; height: auto; }
+.split ul.check-list {
+  list-style: none;
+  margin: 22px 0 0 0;
+  padding: 0;
+}
+.split ul.check-list li {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
+  font-size: 0.98rem;
+}
+.split ul.check-list li:last-child { border-bottom: none; }
+.check-mark {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--yellow);
+  color: var(--navy-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+/* ---------- Subject tag cloud ---------- */
+.subject-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+.subject-tag {
+  border: 1.5px solid var(--navy);
+  color: var(--navy);
+  padding: 9px 18px;
+  border-radius: 24px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  background: var(--paper);
+}
+
+/* ---------- Testimonial / report card ---------- */
+.report-card {
+  background: var(--white);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 32px;
+  box-shadow: 0 1px 0 var(--rule);
+}
+.report-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid var(--navy);
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+}
+.report-card-head .grade {
+  font-family: var(--serif);
+  font-size: 2.4rem;
+  color: var(--yellow-deep);
+  font-weight: 600;
+  line-height: 1;
+}
+.report-card-quote {
+  font-family: var(--serif);
+  font-size: 1.18rem;
+  color: var(--navy);
+  font-weight: 500;
+  line-height: 1.4;
+}
+.report-card-name {
+  margin-top: 16px;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+
+.testimonial-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+}
+
+/* ---------- Logos / trust strip ---------- */
+.trust-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 34px 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+.trust-strip span {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  color: var(--ink-soft);
+  opacity: 0.75;
+}
+
+/* ---------- CTA band ---------- */
+.cta-band {
+  background: var(--yellow);
+  color: var(--navy-deep);
+}
+.cta-band h2 { color: var(--navy-deep); }
+.cta-band .container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.cta-band p { color: var(--navy-deep); opacity: 0.85; margin: 0; }
+
+/* ---------- Footer ---------- */
+footer.site-footer {
+  background: var(--navy-deep);
+  color: #A9B4CC;
+  padding: 64px 0 28px;
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 40px;
+  padding-bottom: 44px;
+  border-bottom: 1px solid #2A3A5C;
+}
+footer .brand-name { color: var(--paper); }
+.footer-col h4 {
+  color: var(--paper);
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 0.88rem;
+  letter-spacing: 0.03em;
+  margin-bottom: 16px;
+}
+.footer-col a {
+  display: block;
+  text-decoration: none;
+  color: #A9B4CC;
+  font-size: 0.92rem;
+  padding: 6px 0;
+}
+.footer-col a:hover { color: var(--yellow); }
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding-top: 24px;
+  font-size: 0.82rem;
+}
+.footer-bottom a { text-decoration: underline; color: #A9B4CC; }
+
+/* ============================================================
+   Overlay: Contact / Request Demo modal
+   ============================================================ */
+.overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 27, 51, 0.72);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 24px;
+}
+.overlay-backdrop.open { display: flex; }
+
+.overlay-modal {
+  background: var(--paper);
+  width: 100%;
+  max-width: 480px;
+  border-radius: 8px;
+  border-top: 6px solid var(--yellow);
+  padding: 40px 36px 32px;
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.overlay-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: var(--paper-dim);
+  color: var(--navy);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.overlay-close:hover { background: var(--rule); }
+
+.overlay-modal h3 { margin-bottom: 6px; }
+.overlay-modal p.overlay-sub { margin-bottom: 24px; font-size: 0.95rem; }
+
+.form-field { margin-bottom: 18px; }
+.form-field label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: 6px;
+}
+.form-field input,
+.form-field select,
+.form-field textarea {
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  padding: 11px 13px;
+  border: 1.5px solid var(--rule);
+  border-radius: 4px;
+  background: var(--white);
+  color: var(--ink);
+}
+.form-field textarea { resize: vertical; min-height: 80px; }
+.form-field input:focus, .form-field select:focus, .form-field textarea:focus {
+  border-color: var(--blue);
+  outline: none;
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+.overlay-modal .btn { width: 100%; margin-top: 6px; }
+
+.overlay-success {
+  text-align: center;
+  padding: 20px 0 10px;
+}
+.overlay-success .check-circle {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: var(--yellow);
+  color: var(--navy-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 auto 20px;
+}
+.overlay-success h3 { margin-bottom: 8px; }
+
+/* ============================================================
+   Cookie banner
+   ============================================================ */
+.cookie-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--navy-deep);
+  color: var(--paper);
+  z-index: 90;
+  padding: 20px 32px;
+  display: none;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+}
+.cookie-banner.open { display: block; }
+.cookie-inner {
+  max-width: 1160px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+.cookie-inner p { color: #C9D2E6; margin: 0; font-size: 0.9rem; max-width: 60ch; }
+.cookie-actions { display: flex; gap: 12px; flex-shrink: 0; }
+.cookie-actions .btn { padding: 10px 20px; font-size: 0.88rem; }
+
+/* ---------- Pricing ---------- */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+  align-items: stretch;
+}
+.price-card {
+  background: var(--white);
+  border: 1.5px solid var(--rule);
+  border-radius: 8px;
+  padding: 34px 28px;
+  display: flex;
+  flex-direction: column;
+}
+.price-card.featured {
+  border-color: var(--navy);
+  box-shadow: 0 8px 0 var(--yellow);
+  transform: translateY(-8px);
+}
+.price-tag {
+  display: inline-block;
+  background: var(--yellow);
+  color: var(--navy-deep);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-bottom: 14px;
+}
+.price-amount {
+  font-family: var(--serif);
+  font-size: 2.6rem;
+  color: var(--navy);
+  font-weight: 600;
+  margin: 6px 0 2px;
+}
+.price-amount span {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+.price-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 22px 0;
+  flex-grow: 1;
+}
+.price-card ul li {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--paper-dim);
+  font-size: 0.92rem;
+  display: flex;
+  gap: 10px;
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--rule);
+  padding: 22px 0;
+}
+.faq-item h3 { font-size: 1.08rem; margin-bottom: 8px; }
+.faq-item p { margin: 0; font-size: 0.95rem; }
+
+/* ---------- Team ---------- */
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 30px;
+}
+.team-card { text-align: left; }
+.team-photo {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.team-card h3 { font-size: 1.05rem; margin-bottom: 2px; }
+.team-role { color: var(--blue); font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; }
+.team-card p { font-size: 0.88rem; }
+
+.value-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 36px;
+}
+.value-item { display: flex; gap: 18px; }
+.value-icon {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 8px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline {
+  position: relative;
+  padding-left: 32px;
+  border-left: 2px solid var(--rule);
+}
+.timeline-item { margin-bottom: 36px; position: relative; }
+.timeline-item:last-child { margin-bottom: 0; }
+.timeline-item::before {
+  content: "";
+  position: absolute;
+  left: -39px;
+  top: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--yellow);
+  border: 2px solid var(--navy);
+}
+.timeline-year {
+  font-family: var(--serif);
+  color: var(--blue);
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+/* ---------- Careers ---------- */
+.job-list { border-top: 1px solid var(--rule); }
+.job-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--rule);
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.job-title { font-family: var(--serif); font-size: 1.15rem; color: var(--navy); font-weight: 600; }
+.job-meta { color: var(--ink-soft); font-size: 0.88rem; margin-top: 4px; }
+.job-tag {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--blue);
+  border: 1px solid var(--blue);
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-right: 8px;
+}
+
+/* ---------- Contact page ---------- */
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+}
+.contact-info-item {
+  display: flex;
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.contact-info-item:last-child { border-bottom: none; }
+.contact-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--navy);
+  color: var(--yellow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 960px) {
+  nav.primary-nav { display: none; }
+  .hero .container { grid-template-columns: 1fr; padding-top: 56px; padding-bottom: 56px; }
+  .stat-strip .container { grid-template-columns: repeat(2, 1fr); }
+  .stat-cell:nth-child(3) { border-left: none; }
+  .feature-grid, .testimonial-grid, .pricing-grid { grid-template-columns: 1fr; }
+  .split, .split.reverse { grid-template-columns: 1fr; }
+  .split.reverse .split-visual { order: 0; }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+  .team-grid { grid-template-columns: 1fr 1fr; }
+  .value-grid { grid-template-columns: 1fr; }
+  .contact-grid { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  .price-card.featured { transform: none; }
+}
+
+@media (max-width: 600px) {
+  .container { padding: 0 20px; }
+  section { padding: 60px 0; }
+  .team-grid { grid-template-columns: 1fr; }
+  .cta-band .container { flex-direction: column; align-items: flex-start; }
+}
+
+/* ---------- Single-file page toggling ---------- */
+.page { display: none; }
+.page.active { display: block; }
+nav.primary-nav a { cursor: pointer; }
+
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="container">
+      <span>Now enrolling for Fall term<span class="dot">&bull;</span>Grades K&ndash;12<span class="dot">&bull;</span>Every subject, one platform</span>
+      <span>Questions? <a href="javascript:void(0)" onclick="showPage('contact')" style="color:#F5B700; text-decoration:underline;">Talk to our team</a></span>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <div class="nav-wrap">
+      <a href="javascript:void(0)" onclick="showPage('home')" class="brand">
+        <svg class="brand-mark" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="2" width="36" height="36" rx="6" fill="#1B2A4A"/>
+          <path d="M9 14L20 8L31 14L20 20L9 14Z" fill="#F5B700"/>
+          <path d="M14 17V25C14 25 16.5 28 20 28C23.5 28 26 25 26 25V17" stroke="#F5B700" stroke-width="2" fill="none"/>
+          <line x1="31" y1="14" x2="31" y2="22" stroke="#F5B700" stroke-width="2"/>
+        </svg>
+        <span class="brand-name">Arviture<small>ACCELERATED LEARNING</small></span>
+      </a>
+      <nav class="primary-nav">
+        <a href="javascript:void(0)" data-page="home" onclick="showPage('home')" class="current">Home</a>
+        <a href="javascript:void(0)" data-page="about" onclick="showPage('about')">About Us</a>
+        <a href="javascript:void(0)" data-page="pricing" onclick="showPage('pricing')">Pricing</a>
+        <a href="javascript:void(0)" data-page="careers" onclick="showPage('careers')">Careers</a>
+        <a href="javascript:void(0)" data-page="contact" onclick="showPage('contact')">Contact</a>
+      </nav>
+      <div class="nav-cta">
+        <button class="btn btn-primary" onclick="openOverlay('demo')">Request a demo</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="page active" id="page-home">
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-copy">
+        <div class="hero-eyebrow">TUTORING, TAILORED &mdash; NOT ONE-SIZE-FITS-ALL</div>
+        <h1>The right tutor for<br>where your student<br><em>actually</em> needs help.</h1>
+        <p class="lead">Arviture pairs every student with a tutor matched to their subject gaps, learning style, and pace &mdash; backed by a worksheet library with more than 40,000 practice sets across every K&ndash;12 subject.</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary btn-lg" onclick="openOverlay('demo')">Request a demo</button>
+          <a href="javascript:void(0)" onclick="showPage('about')" class="btn btn-outline btn-lg">How it works</a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <svg viewBox="0 0 480 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Illustration of a tutor and student reviewing a worksheet together">
+          <rect x="0" y="0" width="480" height="420" rx="14" fill="#243B66"/>
+          <!-- desk -->
+          <rect x="30" y="300" width="420" height="14" fill="#101B33"/>
+          <!-- worksheet on desk -->
+          <rect x="150" y="230" width="140" height="90" rx="4" fill="#FAF9F5"/>
+          <line x1="164" y1="248" x2="276" y2="248" stroke="#C9CFDC" stroke-width="3"/>
+          <line x1="164" y1="262" x2="276" y2="262" stroke="#C9CFDC" stroke-width="3"/>
+          <line x1="164" y1="276" x2="240" y2="276" stroke="#C9CFDC" stroke-width="3"/>
+          <circle cx="255" cy="292" r="10" fill="none" stroke="#F5B700" stroke-width="3"/>
+          <!-- student figure -->
+          <circle cx="130" cy="200" r="26" fill="#F5B700"/>
+          <rect x="94" y="228" width="72" height="80" rx="18" fill="#F5B700"/>
+          <!-- tutor figure -->
+          <circle cx="340" cy="190" r="28" fill="#8FA6D6"/>
+          <rect x="300" y="220" width="80" height="90" rx="18" fill="#8FA6D6"/>
+          <!-- pencil -->
+          <line x1="300" y1="250" x2="250" y2="270" stroke="#F5B700" stroke-width="6" stroke-linecap="round"/>
+          <polygon points="248,268 240,278 254,276" fill="#101B33"/>
+          <!-- floating stars -->
+          <g fill="#F5B700">
+            <circle cx="60" cy="80" r="4"/>
+            <circle cx="410" cy="60" r="5"/>
+            <circle cx="420" cy="140" r="3"/>
+          </g>
+          <path d="M400 90 l4 10 10 2 -8 7 2 10 -8 -6 -8 6 2 -10 -8 -7 10 -2 z" fill="#F5B700"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- REPORT CARD STAT STRIP -->
+  <div class="stat-strip">
+    <div class="container">
+      <div class="stat-cell">
+        <div class="stat-num">92%</div>
+        <div class="stat-label">of students improve at least one letter grade within one term</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-num">6,400+</div>
+        <div class="stat-label">certified tutors across 38 subject areas</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-num">40,000+</div>
+        <div class="stat-label">worksheets in the Arviture practice library</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-num">4.9/5</div>
+        <div class="stat-label">average rating from parents and students</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <section class="section-paper">
+    <div class="container">
+      <div class="section-head">
+        <div class="kicker">HOW ARVITURE WORKS</div>
+        <h2>Three steps between "stuck" and confident.</h2>
+      </div>
+      <div class="feature-grid">
+        <div class="feature">
+          <div class="num">Step One</div>
+          <h3>We diagnose the gap</h3>
+          <p>A short placement check identifies exactly where a student is struggling &mdash; not just "math," but fractions, or balancing equations, or reading comprehension pacing.</p>
+        </div>
+        <div class="feature">
+          <div class="num">Step Two</div>
+          <h3>We match a tutor</h3>
+          <p>Students are paired with a tutor selected for that specific gap, their grade level, and how they learn best &mdash; visual, verbal, hands-on, or a mix.</p>
+        </div>
+        <div class="feature">
+          <div class="num">Step Three</div>
+          <h3>We track the progress</h3>
+          <p>Every session logs what was covered. Parents get plain-language updates, and the worksheet library adjusts to reinforce whatever comes up in tutoring.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAILORED MATCHING -->
+  <section class="section-dim ruled">
+    <div class="container">
+      <div class="split">
+        <div class="split-copy">
+          <div class="kicker">TAILORED MATCHING</div>
+          <h2>Not "a tutor." The right tutor.</h2>
+          <p>Most tutoring services hand you a generic profile and hope for the best. Arviture matches on the details that actually affect learning: subject sub-topic, grade band, learning pace, and even personality fit.</p>
+          <ul class="check-list">
+            <li><span class="check-mark">&#10003;</span> Matched by diagnostic results, not guesswork</li>
+            <li><span class="check-mark">&#10003;</span> Swap tutors anytime at no extra cost</li>
+            <li><span class="check-mark">&#10003;</span> Sessions available in-person or online</li>
+            <li><span class="check-mark">&#10003;</span> Every tutor background-checked and subject-certified</li>
+          </ul>
+        </div>
+        <div class="split-visual">
+          <svg viewBox="0 0 460 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Illustration of a matching process connecting a student profile to a tutor profile">
+            <rect x="10" y="30" width="180" height="220" rx="10" fill="#FFFFFF" stroke="#C9CFDC" stroke-width="2"/>
+            <circle cx="100" cy="90" r="28" fill="#E7ECF7"/>
+            <circle cx="100" cy="90" r="28" fill="none" stroke="#3B5EA6" stroke-width="2"/>
+            <rect x="40" y="135" width="120" height="10" rx="5" fill="#C9CFDC"/>
+            <rect x="40" y="155" width="90" height="10" rx="5" fill="#C9CFDC"/>
+            <rect x="40" y="185" width="120" height="26" rx="5" fill="#FDEBB0"/>
+            <rect x="40" y="220" width="70" height="16" rx="8" fill="#E7ECF7"/>
+
+            <rect x="270" y="130" width="180" height="220" rx="10" fill="#1B2A4A"/>
+            <circle cx="360" cy="190" r="28" fill="#F5B700"/>
+            <rect x="300" y="235" width="120" height="10" rx="5" fill="#4C5D82"/>
+            <rect x="300" y="255" width="90" height="10" rx="5" fill="#4C5D82"/>
+            <rect x="300" y="285" width="120" height="26" rx="5" fill="#F5B700"/>
+            <rect x="300" y="320" width="70" height="16" rx="8" fill="#4C5D82"/>
+
+            <path d="M190 140 C 225 140, 235 220, 270 220" stroke="#F5B700" stroke-width="3" fill="none" stroke-dasharray="6 6"/>
+            <circle cx="270" cy="220" r="6" fill="#F5B700"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WORKSHEET LIBRARY -->
+  <section class="section-paper">
+    <div class="container">
+      <div class="split reverse">
+        <div class="split-visual">
+          <svg viewBox="0 0 460 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Illustration of a stack of worksheets">
+            <g>
+              <rect x="120" y="70" width="220" height="280" rx="6" fill="#F1EFE7" stroke="#C9CFDC" stroke-width="2" transform="rotate(-6 230 210)"/>
+              <rect x="130" y="60" width="220" height="280" rx="6" fill="#FFFFFF" stroke="#C9CFDC" stroke-width="2" transform="rotate(-2 240 200)"/>
+              <rect x="140" y="50" width="220" height="280" rx="6" fill="#FFFFFF" stroke="#1B2A4A" stroke-width="2"/>
+              <rect x="160" y="80" width="180" height="14" rx="3" fill="#1B2A4A"/>
+              <line x1="160" y1="115" x2="340" y2="115" stroke="#C9CFDC" stroke-width="3"/>
+              <line x1="160" y1="135" x2="340" y2="135" stroke="#C9CFDC" stroke-width="3"/>
+              <line x1="160" y1="155" x2="300" y2="155" stroke="#C9CFDC" stroke-width="3"/>
+              <rect x="160" y="185" width="60" height="60" rx="4" fill="#E7ECF7" stroke="#3B5EA6" stroke-width="2"/>
+              <path d="M172 215 l12 12 26 -30" stroke="#3B5EA6" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="300" cy="215" r="30" fill="#F5B700"/>
+              <text x="300" y="223" font-family="Fraunces, serif" font-size="26" fill="#1B2A4A" text-anchor="middle">A+</text>
+              <line x1="160" y1="270" x2="300" y2="270" stroke="#C9CFDC" stroke-width="3"/>
+              <line x1="160" y1="290" x2="260" y2="290" stroke="#C9CFDC" stroke-width="3"/>
+            </g>
+          </svg>
+        </div>
+        <div class="split-copy">
+          <div class="kicker">THE WORKSHEET LIBRARY</div>
+          <h2>Practice doesn't stop when the session ends.</h2>
+          <p>Every Arviture account includes unlimited access to our worksheet library &mdash; over 40,000 practice sets, answer keys, and skill drills spanning elementary math to AP-level science.</p>
+          <div class="subject-tags">
+            <span class="subject-tag">Math</span>
+            <span class="subject-tag">Reading &amp; Writing</span>
+            <span class="subject-tag">Science</span>
+            <span class="subject-tag">Test Prep</span>
+            <span class="subject-tag">Foreign Language</span>
+            <span class="subject-tag">History</span>
+            <span class="subject-tag">Coding</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="section-dim">
+    <div class="container">
+      <div class="section-head center">
+        <div class="kicker">FAMILIES ON ARVITURE</div>
+        <h2>Report cards, but the good kind.</h2>
+      </div>
+      <div class="testimonial-grid">
+        <div class="report-card">
+          <div class="report-card-head">
+            <div class="grade">A&minus;</div>
+          </div>
+          <p class="report-card-quote">"My son went from dreading algebra homework to explaining it to his little sister. The tutor matching actually found someone who clicked with him."</p>
+          <div class="report-card-name">Dana M. &mdash; parent of a 9th grader</div>
+        </div>
+        <div class="report-card">
+          <div class="report-card-head">
+            <div class="grade">B+</div>
+          </div>
+          <p class="report-card-quote">"The worksheet library alone was worth it. We used it for extra reading practice even on weeks without a tutoring session."</p>
+          <div class="report-card-name">Priya S. &mdash; parent of a 4th grader</div>
+        </div>
+        <div class="report-card">
+          <div class="report-card-head">
+            <div class="grade">A</div>
+          </div>
+          <p class="report-card-quote">"I was behind in chemistry and honestly embarrassed about it. My tutor never made me feel behind &mdash; just moved at my pace."</p>
+          <div class="report-card-name">Malik T. &mdash; 11th grade student</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRUST STRIP -->
+  <section class="section-paper" style="padding-top:0; padding-bottom:0;">
+    <div class="container">
+      <div class="trust-strip">
+        <span>Featured in Family Learning Weekly</span>
+        <span>Partnered with 210+ school districts</span>
+        <span>EdTech Parent's Choice, 2025</span>
+        <span>Backed by Northlight Education Fund</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA BAND -->
+  <section class="cta-band">
+    <div class="container">
+      <div>
+        <h2>Ready to see where your student needs the most support?</h2>
+        <p>A 20-minute demo shows you exactly how the matching and worksheet library work.</p>
+      </div>
+      <button class="btn btn-outline" style="border-color:#1B2A4A;" onclick="openOverlay('demo')">Request a demo</button>
+    </div>
+  </section>
+
+  
+    </section>
+
+    <section class="page" id="page-about">
+  <!-- HERO -->
+  <section class="hero" style="border-bottom:6px solid var(--yellow);">
+    <div class="container" style="grid-template-columns: 1fr; text-align:left; padding-top:72px; padding-bottom:64px;">
+      <div class="hero-eyebrow">OUR STORY</div>
+      <h1 style="max-width:16ch;">Built by tutors who got tired of one-size-fits-all.</h1>
+      <p class="lead" style="max-width:60ch;">Arviture started in a school library, not a boardroom. We believed every student's gap is specific &mdash; so the support should be too.</p>
+    </div>
+  </section>
+
+  <!-- MISSION -->
+  <section class="section-paper">
+    <div class="container">
+      <div class="split">
+        <div class="split-copy">
+          <div class="kicker">OUR MISSION</div>
+          <h2>Give every student a tutor who actually fits.</h2>
+          <p>Arviture Accelerated Learning exists to close the gap between "my kid needs help" and "my kid is getting the right help." We do that by pairing students with tutors chosen for their exact subject needs, and by backing every family with a worksheet library deep enough to reinforce what's covered in each session.</p>
+          <p>We're not trying to replace teachers or schools. We're trying to be the most useful thing that happens between report cards.</p>
+        </div>
+        <div class="split-visual">
+          <svg viewBox="0 0 460 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Illustration of a classroom chalkboard with a growth chart">
+            <rect x="20" y="20" width="420" height="280" rx="10" fill="#1B2A4A"/>
+            <rect x="20" y="20" width="420" height="280" rx="10" fill="none" stroke="#101B33" stroke-width="8"/>
+            <polyline points="60,240 140,190 220,210 300,120 380,80" stroke="#F5B700" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="60" cy="240" r="6" fill="#F5B700"/>
+            <circle cx="140" cy="190" r="6" fill="#F5B700"/>
+            <circle cx="220" cy="210" r="6" fill="#F5B700"/>
+            <circle cx="300" cy="120" r="6" fill="#F5B700"/>
+            <circle cx="380" cy="80" r="6" fill="#F5B700"/>
+            <line x1="60" y1="260" x2="60" y2="60" stroke="#4C5D82" stroke-width="2"/>
+            <line x1="60" y1="260" x2="410" y2="260" stroke="#4C5D82" stroke-width="2"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TIMELINE -->
+  <section class="section-dim ruled">
+    <div class="container">
+      <div class="section-head">
+        <div class="kicker">HOW WE GOT HERE</div>
+        <h2>From one tutoring room to a national platform.</h2>
+      </div>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-year">2018</div>
+          <h3>A single tutoring room in Ann Arbor</h3>
+          <p>Arviture opened as a small after-school tutoring room serving 30 local students, matching them with tutors by hand on a whiteboard.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-year">2020</div>
+          <h3>The worksheet library goes online</h3>
+          <p>What started as a filing cabinet of practice sheets became a searchable digital library, opened up to any family &mdash; tutoring client or not.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-year">2022</div>
+          <h3>Matching goes algorithmic</h3>
+          <p>We built our diagnostic-to-tutor matching system, replacing the whiteboard with a process that accounts for subject sub-topic, pace, and learning style.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-year">2026</div>
+          <h3>210+ school district partnerships</h3>
+          <p>Today Arviture supports families directly and partners with school districts to extend tutoring access to students who need it most.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VALUES -->
+  <section class="section-paper">
+    <div class="container">
+      <div class="section-head">
+        <div class="kicker">WHAT WE VALUE</div>
+        <h2>The principles behind the matching engine.</h2>
+      </div>
+      <div class="value-grid">
+        <div class="value-item">
+          <div class="value-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 20c0-4 3.6-6 8-6s8 2 8 6" stroke="currentColor" stroke-width="2"/></svg>
+          </div>
+          <div>
+            <h3>Specificity over averages</h3>
+            <p>"Struggling in math" isn't a diagnosis. We match on the actual sub-skill, not the subject header.</p>
+          </div>
+        </div>
+        <div class="value-item">
+          <div class="value-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 12l6 6L20 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div>
+            <h3>No penalty for a bad fit</h3>
+            <p>If a tutor isn't clicking with a student, families can switch at no cost and no awkward conversation required.</p>
+          </div>
+        </div>
+        <div class="value-item">
+          <div class="value-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div>
+            <h3>Practice compounds</h3>
+            <p>The worksheet library exists because one hour a week of tutoring works better with daily reinforcement in between.</p>
+          </div>
+        </div>
+        <div class="value-item">
+          <div class="value-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 3v18M3 12h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div>
+            <h3>Plain-language progress</h3>
+            <p>Parents get updates written like a person wrote them &mdash; not a dashboard full of unexplained percentages.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TEAM -->
+  <section class="section-dim">
+    <div class="container">
+      <div class="section-head center">
+        <div class="kicker">LEADERSHIP</div>
+        <h2>The people steering the whiteboard-to-platform journey.</h2>
+      </div>
+      <div class="team-grid">
+        <div class="team-card">
+          <div class="team-photo">
+            <svg viewBox="0 0 200 200" width="100%" height="100%"><rect width="200" height="200" fill="#E7ECF7"/><circle cx="100" cy="80" r="38" fill="#3B5EA6"/><rect x="45" y="130" width="110" height="90" rx="20" fill="#3B5EA6"/></svg>
+          </div>
+          <h3>Renata Cole</h3>
+          <div class="team-role">Co-Founder &amp; CEO</div>
+          <p>Former middle school math teacher who started Arviture's first tutoring room in 2018.</p>
+        </div>
+        <div class="team-card">
+          <div class="team-photo">
+            <svg viewBox="0 0 200 200" width="100%" height="100%"><rect width="200" height="200" fill="#FDEBB0"/><circle cx="100" cy="80" r="38" fill="#D89E00"/><rect x="45" y="130" width="110" height="90" rx="20" fill="#D89E00"/></svg>
+          </div>
+          <h3>Marcus Ihejirika</h3>
+          <div class="team-role">Co-Founder &amp; Head of Curriculum</div>
+          <p>Built the worksheet library from a personal filing cabinet into today's 40,000-item catalog.</p>
+        </div>
+        <div class="team-card">
+          <div class="team-photo">
+            <svg viewBox="0 0 200 200" width="100%" height="100%"><rect width="200" height="200" fill="#E7ECF7"/><circle cx="100" cy="80" r="38" fill="#1B2A4A"/><rect x="45" y="130" width="110" height="90" rx="20" fill="#1B2A4A"/></svg>
+          </div>
+          <h3>Dr. Sophie Anand</h3>
+          <div class="team-role">Head of Tutor Matching</div>
+          <p>Learning scientist who designed the diagnostic system behind Arviture's tutor pairing.</p>
+        </div>
+        <div class="team-card">
+          <div class="team-photo">
+            <svg viewBox="0 0 200 200" width="100%" height="100%"><rect width="200" height="200" fill="#FDEBB0"/><circle cx="100" cy="80" r="38" fill="#3B5EA6"/><rect x="45" y="130" width="110" height="90" rx="20" fill="#3B5EA6"/></svg>
+          </div>
+          <h3>Owen Kastrati</h3>
+          <div class="team-role">Head of School Partnerships</div>
+          <p>Leads Arviture's work with 210+ school districts to widen access to tutoring support.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-band">
+    <div class="container">
+      <div>
+        <h2>Curious how the matching actually works?</h2>
+        <p>We'll walk you through a real diagnostic and pairing in a 20-minute demo.</p>
+      </div>
+      <button class="btn btn-outline" style="border-color:#1B2A4A;" onclick="openOverlay('demo')">Request a demo</button>
+    </div>
+  </section>
+
+  
+    </section>
+
+    <section class="page" id="page-pricing">
+  <!-- HERO -->
+  <section class="hero" style="border-bottom:6px solid var(--yellow);">
+    <div class="container" style="grid-template-columns: 1fr; text-align:left; padding-top:72px; padding-bottom:56px;">
+      <div class="hero-eyebrow">PRICING</div>
+      <h1 style="max-width:18ch;">Plans that scale with how much support you need.</h1>
+      <p class="lead" style="max-width:60ch;">Every plan includes full access to the worksheet library. Tutoring hours and matching priority scale with your plan.</p>
+    </div>
+  </section>
+
+  <!-- PRICING GRID -->
+  <section class="section-paper">
+    <div class="container">
+      <div class="pricing-grid">
+        <div class="price-card">
+          <span class="price-tag">LIBRARY</span>
+          <h3>Practice</h3>
+          <p style="font-size:0.9rem;">For families who mainly want structured practice material.</p>
+          <div class="price-amount">$19<span> / month</span></div>
+          <ul>
+            <li><span class="check-mark">&#10003;</span> Full worksheet library access (40,000+ sheets)</li>
+            <li><span class="check-mark">&#10003;</span> Progress tracking dashboard</li>
+            <li><span class="check-mark">&#10003;</span> Answer keys &amp; skill drills</li>
+            <li><span class="check-mark">&#10003;</span> 1 student profile</li>
+          </ul>
+          <button class="btn btn-outline" onclick="openOverlay('demo')">Request a demo</button>
+        </div>
+
+        <div class="price-card featured">
+          <span class="price-tag">MOST POPULAR</span>
+          <h3>Guided</h3>
+          <p style="font-size:0.9rem;">Weekly tutoring matched to your student's specific gaps.</p>
+          <div class="price-amount">$249<span> / month</span></div>
+          <ul>
+            <li><span class="check-mark">&#10003;</span> Everything in Practice</li>
+            <li><span class="check-mark">&#10003;</span> 4 tutoring sessions per month</li>
+            <li><span class="check-mark">&#10003;</span> Full diagnostic &amp; tutor matching</li>
+            <li><span class="check-mark">&#10003;</span> Switch tutors anytime, no fee</li>
+            <li><span class="check-mark">&#10003;</span> Monthly progress report</li>
+          </ul>
+          <button class="btn btn-primary" onclick="openOverlay('demo')">Request a demo</button>
+        </div>
+
+        <div class="price-card">
+          <span class="price-tag">ACCELERATED</span>
+          <h3>Immersive</h3>
+          <p style="font-size:0.9rem;">For students working toward a specific exam or catching up fast.</p>
+          <div class="price-amount">$549<span> / month</span></div>
+          <ul>
+            <li><span class="check-mark">&#10003;</span> Everything in Guided</li>
+            <li><span class="check-mark">&#10003;</span> 10 tutoring sessions per month</li>
+            <li><span class="check-mark">&#10003;</span> Priority tutor matching</li>
+            <li><span class="check-mark">&#10003;</span> Bi-weekly progress calls</li>
+            <li><span class="check-mark">&#10003;</span> Up to 3 student profiles</li>
+          </ul>
+          <button class="btn btn-outline" onclick="openOverlay('demo')">Request a demo</button>
+        </div>
+      </div>
+
+      <p style="text-align:center; margin-top:32px; font-size:0.88rem;">Need something for a whole classroom or district? <a href="javascript:void(0)" onclick="showPage('contact')" style="color:var(--blue); font-weight:600;">Talk to our partnerships team</a>.</p>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section-dim">
+    <div class="container" style="max-width:800px;">
+      <div class="section-head">
+        <div class="kicker">PRICING FAQ</div>
+        <h2>Common questions</h2>
+      </div>
+
+      <div class="faq-item">
+        <h3>Can I switch plans later?</h3>
+        <p>Yes. Families can move between Practice, Guided, and Immersive at any time, and changes take effect on your next billing cycle.</p>
+      </div>
+      <div class="faq-item">
+        <h3>What happens if the tutor match isn't working?</h3>
+        <p>You can request a new tutor at no additional cost. Most families see a new match confirmed within 48 hours.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Is the worksheet library really unlimited?</h3>
+        <p>Yes, on every plan. There's no cap on how many worksheets a student can download or print in a month.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Do you offer discounts for multiple children?</h3>
+        <p>Immersive plans include up to three student profiles at no added cost. Larger households can contact us for a custom quote.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Is there a contract or minimum term?</h3>
+        <p>No. All plans are billed monthly and can be canceled anytime before your next billing date.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-band">
+    <div class="container">
+      <div>
+        <h2>Not sure which plan fits?</h2>
+        <p>Tell us about your student and we'll recommend a starting point.</p>
+      </div>
+      <button class="btn btn-outline" style="border-color:#1B2A4A;" onclick="openOverlay('demo')">Request a demo</button>
+    </div>
+  </section>
+
+  
+    </section>
+
+    <section class="page" id="page-careers">
+  <!-- HERO -->
+  <section class="hero" style="border-bottom:6px solid var(--yellow);">
+    <div class="container" style="grid-template-columns: 1.3fr 0.7fr; padding-top:72px; padding-bottom:64px;">
+      <div>
+        <div class="hero-eyebrow">CAREERS AT ARVITURE</div>
+        <h1 style="max-width:16ch;">Help us build the tutoring students actually stick with.</h1>
+        <p class="lead">We're a small team obsessed with matching students to the right kind of help &mdash; and we're hiring across tutoring, curriculum, engineering, and partnerships.</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary btn-lg" onclick="openOverlay('careers')">See open roles &amp; apply</button>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <svg viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Illustration of a team working together">
+          <circle cx="160" cy="160" r="140" fill="#243B66"/>
+          <circle cx="110" cy="120" r="26" fill="#F5B700"/>
+          <rect x="78" y="150" width="64" height="72" rx="16" fill="#F5B700"/>
+          <circle cx="200" cy="130" r="24" fill="#8FA6D6"/>
+          <rect x="172" y="158" width="56" height="66" rx="16" fill="#8FA6D6"/>
+          <circle cx="160" cy="90" r="18" fill="#FAF9F5"/>
+          <rect x="140" y="112" width="40" height="48" rx="14" fill="#FAF9F5"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY WORK HERE -->
+  <section class="section-paper">
+    <div class="container">
+      <div class="section-head">
+        <div class="kicker">WHY ARVITURE</div>
+        <h2>What it's like on the team.</h2>
+      </div>
+      <div class="feature-grid">
+        <div class="feature">
+          <div class="num">Culture</div>
+          <h3>Small teams, real ownership</h3>
+          <p>No layers of approval between an idea and a shipped change. Most of the team has shaped something a student or tutor touches directly.</p>
+        </div>
+        <div class="feature">
+          <div class="num">Growth</div>
+          <h3>Learning is kind of the point</h3>
+          <p>Every employee gets a professional development stipend &mdash; using the same philosophy we apply to students, applied to our own team.</p>
+        </div>
+        <div class="feature">
+          <div class="num">Flexibility</div>
+          <h3>Remote-friendly, outcomes-focused</h3>
+          <p>Tutors set their own availability. Most non-tutoring roles are remote or hybrid, with core collaboration hours only.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BENEFITS STRIP -->
+  <section class="section-dim">
+    <div class="container">
+      <div class="section-head center">
+        <div class="kicker">BENEFITS</div>
+        <h2>What you get, beyond the paycheck.</h2>
+      </div>
+      <div class="value-grid">
+        <div class="value-item">
+          <div class="value-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M2 12h20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+          <div><h3>Health coverage</h3><p>Medical, dental, and vision from day one for full-time staff.</p></div>
+        </div>
+        <div class="value-item">
+          <div class="value-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="4" stroke="currentColor" stroke-width="2"/></svg></div>
+          <div><h3>Flexible time off</h3><p>Unlimited PTO with a mandatory 15-day minimum, so it's actually used.</p></div>
+        </div>
+        <div class="value-item">
+          <div class="value-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/></svg></div>
+          <div><h3>Learning stipend</h3><p>$1,200 a year toward courses, books, or conferences &mdash; on any subject.</p></div>
+        </div>
+        <div class="value-item">
+          <div class="value-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 12l6 6L20 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>Retirement match</h3><p>4% 401(k) match, vested immediately.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OPEN ROLES -->
+  <section class="section-paper">
+    <div class="container">
+      <div class="section-head">
+        <div class="kicker">OPEN ROLES</div>
+        <h2>Current openings</h2>
+      </div>
+      <div class="job-list">
+        <div class="job-row">
+          <div>
+            <span class="job-tag">Tutoring</span>
+            <div class="job-title">High School Math Tutor (Contract)</div>
+            <div class="job-meta">Remote &middot; Flexible hours &middot; Algebra through AP Calculus</div>
+          </div>
+          <button class="btn btn-outline" onclick="openOverlay('careers')">Apply</button>
+        </div>
+        <div class="job-row">
+          <div>
+            <span class="job-tag">Curriculum</span>
+            <div class="job-title">Worksheet Content Designer</div>
+            <div class="job-meta">Remote &middot; Full-time &middot; Elementary &amp; middle school focus</div>
+          </div>
+          <button class="btn btn-outline" onclick="openOverlay('careers')">Apply</button>
+        </div>
+        <div class="job-row">
+          <div>
+            <span class="job-tag">Engineering</span>
+            <div class="job-title">Product Engineer, Matching Systems</div>
+            <div class="job-meta">Hybrid &middot; Ann Arbor, MI &middot; Full-time</div>
+          </div>
+          <button class="btn btn-outline" onclick="openOverlay('careers')">Apply</button>
+        </div>
+        <div class="job-row">
+          <div>
+            <span class="job-tag">Partnerships</span>
+            <div class="job-title">School District Partnerships Manager</div>
+            <div class="job-meta">Remote &middot; Full-time &middot; Some regional travel</div>
+          </div>
+          <button class="btn btn-outline" onclick="openOverlay('careers')">Apply</button>
+        </div>
+        <div class="job-row">
+          <div>
+            <span class="job-tag">Support</span>
+            <div class="job-title">Family Success Coordinator</div>
+            <div class="job-meta">Remote &middot; Full-time &middot; Parent-facing support</div>
+          </div>
+          <button class="btn btn-outline" onclick="openOverlay('careers')">Apply</button>
+        </div>
+      </div>
+      <p style="margin-top:24px; font-size:0.9rem;">Don't see a fit? <a href="javascript:void(0)" onclick="openOverlay('careers')" style="color:var(--blue); font-weight:600;">Reach out anyway</a> &mdash; we keep a list for future openings.</p>
+    </div>
+  </section>
+
+  
+    </section>
+
+    <section class="page" id="page-contact">
+  <!-- HERO -->
+  <section class="hero" style="border-bottom:6px solid var(--yellow);">
+    <div class="container" style="grid-template-columns: 1fr; text-align:left; padding-top:72px; padding-bottom:56px;">
+      <div class="hero-eyebrow">CONTACT US</div>
+      <h1 style="max-width:16ch;">We'll get back to you within one school day.</h1>
+      <p class="lead" style="max-width:56ch;">Whether you're a parent, a student, a teacher, or a school administrator &mdash; there's a real person on the other end.</p>
+    </div>
+  </section>
+
+  <!-- CONTACT GRID -->
+  <section class="section-paper">
+    <div class="container">
+      <div class="contact-grid">
+        <div>
+          <div class="kicker">REACH US DIRECTLY</div>
+          <h2 style="margin-bottom:24px;">Contact information</h2>
+
+          <div class="contact-info-item">
+            <div class="contact-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 6h16v12H4z" stroke="currentColor" stroke-width="2"/><path d="M4 7l8 6 8-6" stroke="currentColor" stroke-width="2"/></svg>
+            </div>
+            <div>
+              <h3 style="margin-bottom:2px; font-size:1rem;">Email</h3>
+              <p style="margin:0; font-size:0.92rem;">hello@arviture.example</p>
+            </div>
+          </div>
+
+          <div class="contact-info-item">
+            <div class="contact-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 3h4l2 5-2.5 1.5a12 12 0 006 6L17 13l5 2v4a2 2 0 01-2 2A16 16 0 014 6a2 2 0 012-3z" stroke="currentColor" stroke-width="2"/></svg>
+            </div>
+            <div>
+              <h3 style="margin-bottom:2px; font-size:1rem;">Phone</h3>
+              <p style="margin:0; font-size:0.92rem;">(800) 555-0182, Mon&ndash;Fri, 8am&ndash;7pm ET</p>
+            </div>
+          </div>
+
+          <div class="contact-info-item">
+            <div class="contact-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 22s7-6.5 7-12a7 7 0 10-14 0c0 5.5 7 12 7 12z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="2"/></svg>
+            </div>
+            <div>
+              <h3 style="margin-bottom:2px; font-size:1rem;">Headquarters</h3>
+              <p style="margin:0; font-size:0.92rem;">412 Willow Grove Ave, Ann Arbor, MI 48104</p>
+            </div>
+          </div>
+
+          <div class="contact-info-item">
+            <div class="contact-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2"/></svg>
+            </div>
+            <div>
+              <h3 style="margin-bottom:2px; font-size:1rem;">Support hours</h3>
+              <p style="margin:0; font-size:0.92rem;">Monday&ndash;Friday, 8am&ndash;7pm ET &middot; Saturday, 10am&ndash;2pm ET</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="kicker">SEND A MESSAGE</div>
+          <h2 style="margin-bottom:16px;">Prefer to write it out?</h2>
+          <p style="margin-bottom:28px;">Click below and we'll open a quick form &mdash; no account needed. We typically reply within one school day.</p>
+          <div class="report-card">
+            <h3 style="margin-bottom:10px;">Tell us what you need</h3>
+            <p style="font-size:0.92rem; margin-bottom:20px;">Tutoring questions, billing, partnerships, press &mdash; whatever it is, this gets it to the right person on our team.</p>
+            <button class="btn btn-primary btn-lg" onclick="openOverlay('contact')">Contact us</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAP-STYLE STRIP -->
+  <section class="section-dim" style="padding-top:0;">
+    <div class="container">
+      <div class="trust-strip" style="border-top:none;">
+        <span>Serving families nationwide</span>
+        <span>Online &amp; in-person tutoring available</span>
+        <span>Partnered with 210+ school districts</span>
+      </div>
+    </div>
+  </section>
+
+  
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <span class="brand-name">Arviture<small style="color:#F5B700;">ACCELERATED LEARNING</small></span>
+          <p style="margin-top:16px; max-width:32ch; font-size:0.9rem;">Tutoring matched to the student, backed by a library built to keep them practicing.</p>
+        </div>
+        <div class="footer-col">
+          <h4>COMPANY</h4>
+          <a href="javascript:void(0)" onclick="showPage('about')">About Us</a>
+          <a href="javascript:void(0)" onclick="showPage('careers')">Careers</a>
+          <a href="javascript:void(0)" onclick="showPage('pricing')">Pricing</a>
+        </div>
+        <div class="footer-col">
+          <h4>GET STARTED</h4>
+          <a href="javascript:void(0)" onclick="showPage('contact')">Contact Us</a>
+          <a href="javascript:void(0)" onclick="openOverlay('demo')">Request a Demo</a>
+        </div>
+        <div class="footer-col">
+          <h4>SUBJECTS</h4>
+          <a href="javascript:void(0)">Math</a>
+          <a href="javascript:void(0)">Reading &amp; Writing</a>
+          <a href="javascript:void(0)">Science</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; 2026 Arviture Accelerated Learning. All rights reserved.</span>
+        <span><a href="javascript:void(0)">Privacy Policy</a> &nbsp; <a href="javascript:void(0)">Terms of Service</a></span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Contact / Request Demo Overlay -->
+  <div class="overlay-backdrop" id="contact-overlay" role="dialog" aria-modal="true" aria-labelledby="overlay-heading">
+    <div class="overlay-modal">
+      <button class="overlay-close" aria-label="Close" onclick="closeOverlay()">&times;</button>
+
+      <form id="overlay-form" onsubmit="return handleOverlaySubmit(event)">
+        <h3 id="overlay-heading">Get in touch</h3>
+        <p class="overlay-sub" id="overlay-subheading">Questions about tutoring, pricing, or partnerships? Send us a note.</p>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="ov-first">First name</label>
+            <input type="text" id="ov-first" name="first_name" placeholder="Jordan" required>
+          </div>
+          <div class="form-field">
+            <label for="ov-last">Last name</label>
+            <input type="text" id="ov-last" name="last_name" placeholder="Rivera" required>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="ov-email">Email address</label>
+          <input type="email" id="ov-email" name="email" placeholder="you@example.com" required>
+        </div>
+
+        <div class="form-field">
+          <label for="ov-role">I am a</label>
+          <select id="ov-role" name="role">
+            <option>Parent or guardian</option>
+            <option>Student</option>
+            <option>Teacher or school administrator</option>
+            <option>Prospective tutor</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="ov-message">Message (optional)</label>
+          <textarea id="ov-message" name="message" placeholder="Tell us a little about what you're looking for..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg">Submit</button>
+      </form>
+
+      <div class="overlay-success" id="overlay-success" style="display:none;">
+        <div class="check-circle">&#10003;</div>
+        <h3>Thank you!</h3>
+        <p>We'll be in touch shortly.</p>
+        <button type="button" class="btn btn-outline" style="width:auto; margin-top:10px;" onclick="closeOverlay()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cookie Banner -->
+  <div class="cookie-banner" id="cookie-banner">
+    <div class="cookie-inner">
+      <p>Arviture uses cookies to keep the site running smoothly and to understand how families use our tutoring tools. You can accept all cookies or stick with the essentials.</p>
+      <div class="cookie-actions">
+        <button class="btn btn-outline" onclick="setCookieChoice('essential')">Essential only</button>
+        <button class="btn btn-primary" onclick="setCookieChoice('all')">Accept all cookies</button>
+      </div>
+    </div>
+  </div>
+
+
+<script>
+
+// ============================================================
+// Arviture Accelerated Learning — shared site behavior
+// ============================================================
+
+function showPage(pageId) {
+  document.querySelectorAll('.page').forEach(function (el) {
+    el.classList.remove('active');
+  });
+  var target = document.getElementById('page-' + pageId);
+  if (target) target.classList.add('active');
+
+  document.querySelectorAll('nav.primary-nav a[data-page]').forEach(function (a) {
+    a.classList.toggle('current', a.getAttribute('data-page') === pageId);
+  });
+
+  window.scrollTo({ top: 0, behavior: 'auto' });
+}
+
+function openOverlay(trigger) {
+  const backdrop = document.getElementById('contact-overlay');
+  const form = document.getElementById('overlay-form');
+  const success = document.getElementById('overlay-success');
+  if (!backdrop) return;
+
+  if (form) form.style.display = '';
+  if (success) success.style.display = 'none';
+  if (form) form.reset();
+
+  const heading = document.getElementById('overlay-heading');
+  const sub = document.getElementById('overlay-subheading');
+  if (heading && sub) {
+    if (trigger === 'careers') {
+      heading.textContent = "Let's talk careers";
+      sub.textContent = "Tell us a bit about yourself and the Arviture team will follow up about open roles.";
+    } else if (trigger === 'demo') {
+      heading.textContent = 'Request a demo';
+      sub.textContent = "See how Arviture matches students with tutors and worksheets, tailored to your school or family.";
+    } else {
+      heading.textContent = 'Get in touch';
+      sub.textContent = "Questions about tutoring, pricing, or partnerships? Send us a note.";
+    }
+  }
+
+  backdrop.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  const firstInput = backdrop.querySelector('input, textarea, select');
+  if (firstInput) setTimeout(() => firstInput.focus(), 50);
+}
+
+function closeOverlay() {
+  const backdrop = document.getElementById('contact-overlay');
+  if (!backdrop) return;
+  backdrop.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function handleOverlaySubmit(event) {
+  event.preventDefault();
+  const form = document.getElementById('overlay-form');
+  const success = document.getElementById('overlay-success');
+  if (form) form.style.display = 'none';
+  if (success) success.style.display = 'block';
+  return false;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  const backdrop = document.getElementById('contact-overlay');
+  if (backdrop) {
+    backdrop.addEventListener('click', function (e) {
+      if (e.target === backdrop) closeOverlay();
+    });
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeOverlay();
+  });
+
+  const cookieBanner = document.getElementById('cookie-banner');
+  if (cookieBanner && !window.__arvitureCookieChoice) {
+    setTimeout(() => cookieBanner.classList.add('open'), 600);
+  }
+
+  showPage('home');
+});
+
+function setCookieChoice(choice) {
+  window.__arvitureCookieChoice = choice;
+  const cookieBanner = document.getElementById('cookie-banner');
+  if (cookieBanner) cookieBanner.classList.remove('open');
+}
+
+</script>
+</body>
+</html>
