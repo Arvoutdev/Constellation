@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Do we have a minute and change?</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: #ffffff;
+    color: #000000;
+    font-family: "Times New Roman", Times, serif;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+
+  .wrap {
+    text-align: center;
+    max-width: 600px;
+    padding: 40px 20px;
+  }
+
+  .status {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 24px;
+  }
+
+  .status.green { color: #006400; }
+  .status.red   { color: #b00000; }
+
+  .amount {
+    font-size: 56px;
+    font-weight: bold;
+    margin-bottom: 18px;
+    letter-spacing: 1px;
+  }
+
+  .subtext {
+    font-size: 18px;
+    color: #000000;
+  }
+
+  .class-name {
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="status" class="status">Loading…</div>
+    <div id="amount" class="amount">$0.00</div>
+  </div>
+
+<script>
+  // Hard-coded CS 925 (Jadav) class periods, Mon-Fri, 24hr [startHour, startMin, endHour, endMin]
+  // 0 = Sunday ... 6 = Saturday
+  const csSchedule = {
+    1: [9, 54, 10, 41],  // Monday, Period 3
+    3: [8, 0, 8, 47],    // Wednesday, Period 1
+    4: [9, 54, 10, 41],  // Thursday, Period 3
+    5: [10, 46, 11, 33]  // Friday, Period 4
+  };
+
+  function pad(n) {
+    return n.toString().padStart(2, '0');
+  }
+
+  function update() {
+    const now = new Date();
+    const day = now.getDay();
+    const statusEl = document.getElementById('status');
+    const amountEl = document.getElementById('amount');
+
+    const period = csSchedule[day];
+
+    let inWindow = false;
+    let secondsRemaining = null;
+    let secondsSinceStart = null;
+
+    if (period) {
+      const [sh, sm, eh, em] = period;
+      const start = new Date(now);
+      start.setHours(sh, sm, 0, 0);
+      const end = new Date(now);
+      end.setHours(eh, em, 0, 0);
+
+      if (now >= start && now <= end) {
+        inWindow = true;
+        secondsRemaining = Math.floor((end - now) / 1000);
+        secondsSinceStart = Math.floor((now - start) / 1000);
+      }
+    }
+
+    // "a minute and change" window: between 2 minutes and 1 minute left
+    const haveMinuteAndChange = inWindow &&
+      secondsRemaining <= 120 && secondsRemaining >= 60;
+
+    if (haveMinuteAndChange) {
+      statusEl.textContent = 'We have a minute and change.';
+      statusEl.className = 'status green';
+    } else {
+      statusEl.textContent = "We currently don't have a minute and change.";
+      statusEl.className = 'status red';
+    }
+
+    // Represent elapsed time of class as "change": dollars = minutes elapsed,
+    // cents = seconds elapsed within the current minute (00-59, displayed 0-100 scale as seconds)
+    if (inWindow) {
+      const minutesElapsed = Math.floor(secondsSinceStart / 60);
+      const secondsElapsed = secondsSinceStart % 60;
+      amountEl.textContent = '$' + minutesElapsed + '.' + pad(secondsElapsed);
+    } else {
+      amountEl.textContent = '$0.00';
+    }
+  }
+
+  update();
+  setInterval(update, 1000);
+</script>
+</body>
+</html>
