@@ -60,13 +60,25 @@
   </div>
 
 <script>
-  // Hard-coded CS 925 (Jadav) class periods, Mon-Fri, 24hr [startHour, startMin, endHour, endMin]
-  // 0 = Sunday ... 6 = Saturday
-  const csSchedule = {
-    1: [9, 54, 10, 41],  // Monday, Period 3
-    3: [8, 0, 8, 47],    // Wednesday, Period 1
-    4: [9, 54, 10, 41],  // Thursday, Period 3
-    5: [10, 46, 11, 33]  // Friday, Period 4
+  // Hard-coded period END times, same schedule Mon-Fri, 24hr.
+  const dailyEndTimes = [
+    [10, 32],  // P1 (10:00-10:32)
+    [11, 9],   // P2 (10:37-11:09)
+    [11, 19],  // Homeroom/Common Tutorial (11:14-11:19)
+    [11, 56],  // P3 (11:24-11:56)
+    [12, 32],  // Lunch (12:01-12:32)
+    [13, 9],   // P4 (12:37-1:09 PM)
+    [13, 46],  // P5 (1:14-1:46 PM)
+    [14, 23],  // P6 (1:51-2:23 PM)
+    [15, 0]    // P7 (2:28-3:00 PM)
+  ];
+
+  const weekEndTimes = {
+    1: dailyEndTimes, // Monday
+    2: dailyEndTimes, // Tuesday
+    3: dailyEndTimes, // Wednesday
+    4: dailyEndTimes, // Thursday
+    5: dailyEndTimes  // Friday
   };
 
   function pad(n) {
@@ -79,51 +91,55 @@
     const statusEl = document.getElementById('status');
     const amountEl = document.getElementById('amount');
 
-    const period = csSchedule[day];
+    const endTimes = weekEndTimes[day] || [];
 
-    let inWindow = false;
-    let secondsRemaining = null;
-    let secondsSinceStart = null;
+    // Find the next period-end boundary today that is still in the future.
+    let msRemaining = null;
 
-    if (period) {
-      const [sh, sm, eh, em] = period;
-      const start = new Date(now);
-      start.setHours(sh, sm, 0, 0);
+    for (const [eh, em] of endTimes) {
       const end = new Date(now);
       end.setHours(eh, em, 0, 0);
 
-      if (now >= start && now <= end) {
-        inWindow = true;
-        secondsRemaining = Math.floor((end - now) / 1000);
-        secondsSinceStart = Math.floor((now - start) / 1000);
+      if (end > now) {
+        msRemaining = end - now;
+        break;
       }
     }
 
-    // "a minute and change" window: between 2 minutes and 1 minute left
-    const haveMinuteAndChange = inWindow &&
+    const haveTarget = msRemaining !== null;
+    const secondsRemaining = haveTarget ? msRemaining / 1000 : null;
+
+    // "a minute and change" window: between 2 minutes and 1 minute left until the boundary
+    const haveMinuteAndChange = haveTarget &&
       secondsRemaining <= 120 && secondsRemaining >= 60;
 
     if (haveMinuteAndChange) {
-      statusEl.textContent = 'We have a minute and change left...';
+      statusEl.textContent = 'We have a minute and change.';
       statusEl.className = 'status green';
     } else {
       statusEl.textContent = "We currently don't have a minute and change.";
       statusEl.className = 'status red';
     }
 
-    // Represent elapsed time of class as "change": dollars = minutes elapsed,
-    // cents = seconds elapsed within the current minute (00-59, displayed 0-100 scale as seconds)
-    if (inWindow) {
-      const minutesElapsed = Math.floor(secondsSinceStart / 60);
-      const secondsElapsed = secondsSinceStart % 60;
-      amountEl.textContent = '$' + minutesElapsed + '.' + pad(secondsElapsed);
+    // Represent time remaining until the next period-end boundary as "change":
+    // dollars = whole minutes remaining, cents = seconds remaining scaled to a 0-99 range.
+    // Uses fractional (millisecond-precision) seconds and requestAnimationFrame so the
+    // cents value interpolates smoothly instead of jumping once per second.
+    if (haveTarget) {
+      const minutesRemaining = Math.floor(secondsRemaining / 60);
+      const secondsPart = secondsRemaining % 60;
+      const cents = Math.floor((secondsPart / 60) * 100);
+      amountEl.textContent = '$' + minutesRemaining + '.' + pad(cents);
     } else {
       amountEl.textContent = '$0.00';
     }
   }
 
-  update();
-  setInterval(update, 1000);
+  function tick() {
+    update();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 </script>
 </body>
 </html>
