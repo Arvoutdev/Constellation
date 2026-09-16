@@ -19,21 +19,61 @@
     align-items: center;
     justify-content: center;
     min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #imageStampLayer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  .image-stamp {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    opacity: 1;
+    pointer-events: none;
+  }
+
+  #confettiCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
   }
 
   .wrap {
     text-align: center;
-    max-width: 600px;
-    padding: 40px 20px;
+    max-width: 95vw;
+    padding: 40px 48px;
+    position: relative;
+    z-index: 4;
   }
 
   .status {
-    font-size: 28px;
+    font-size: clamp(14px, 4vw, 28px);
     font-weight: bold;
     margin-bottom: 24px;
+    white-space: nowrap;
+    /* text-shadow (set dynamically via inline style in JS, see buildOutlineShadow) always
+       renders BEHIND the glyph fill in HTML/CSS - unlike -webkit-text-stroke + paint-order,
+       which is unreliable/unsupported for plain HTML text (paint-order is really an
+       SVG-text property). Stacking shadows in a ring around the text at the stroke's
+       radius fakes a solid outline that sits behind the fill color. */
   }
 
-  .status.green { color: #006400; }
+  .status.green { color: #42E34B; }
   .status.red   { color: #b00000; }
 
   .amount {
@@ -51,57 +91,368 @@
   .class-name {
     font-style: italic;
   }
+
+  .debug-box {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    align-items: center;
+    gap: 8px;
+    background: #f0f0f0;
+    border: 1px solid #999;
+    padding: 8px 12px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+  }
+
+  .debug-box.visible {
+    display: flex;
+  }
+
+  .debug-box input {
+    width: 120px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    padding: 4px;
+  }
+
+  .debug-box button {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    padding: 4px 8px;
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
+  <div id="imageStampLayer"></div>
+  <canvas id="confettiCanvas"></canvas>
   <div class="wrap">
     <div id="status" class="status">Loading…</div>
     <div id="amount" class="amount">$0.00</div>
   </div>
 
+  <audio id="outroAudio" src="https://arviture.com/minuteandchange/outro.mp3" preload="auto"></audio>
+
+  <div id="debugBox" class="debug-box">
+    <label for="debugTime">Set time (e.g. 7:57:30.5 am ET):</label>
+    <input type="text" id="debugTime" placeholder="7:57:30.5 am" autocomplete="off">
+    <button id="debugApply">Apply</button>
+    <button id="debugReset">Reset</button>
+    <span id="debugStatus"></span>
+  </div>
+
 <script>
-  // Hard-coded period END times, same schedule Mon-Fri, 24hr.
-  const dailyEndTimes = [
-    [10, 32],  // P1 (10:00-10:32)
-    [11, 9],   // P2 (10:37-11:09)
-    [11, 19],  // Homeroom/Common Tutorial (11:14-11:19)
-    [11, 56],  // P3 (11:24-11:56)
-    [12, 32],  // Lunch (12:01-12:32)
-    [13, 9],   // P4 (12:37-1:09 PM)
-    [13, 46],  // P5 (1:14-1:46 PM)
-    [14, 23],  // P6 (1:51-2:23 PM)
-    [15, 0]    // P7 (2:28-3:00 PM)
+  // Hard-coded checkpoint times as fixed UTC times (converted from America/New_York, EDT = UTC-4).
+  // This makes the countdown identical for every viewer regardless of local timezone or
+  // device clock misconfiguration relative to timezone.
+  // NOTE: EDT (UTC-4) is used because it is currently daylight saving time in New York.
+  // If this is still in use after New York switches to EST (UTC-5, around early Nov),
+  // these UTC hours need to shift by +1 to stay correct.
+  //   8:00 AM EDT -> 12:00 UTC ... 3:00 PM EDT -> 19:00 UTC
+  const dailyCheckpointsUTC = [
+    [12, 0],   // 8:00 AM EDT
+    [12, 47],  // 8:47 AM EDT
+    [13, 39],  // 9:39 AM EDT
+    [13, 49],  // 9:49 AM EDT
+    [14, 41],  // 10:41 AM EDT
+    [15, 33],  // 11:33 AM EDT
+    [16, 25],  // 12:25 PM EDT
+    [17, 16],  // 1:16 PM EDT
+    [18, 8],   // 2:08 PM EDT
+    [19, 0]    // 3:00 PM EDT
   ];
 
-  const weekEndTimes = {
-    1: dailyEndTimes, // Monday
-    2: dailyEndTimes, // Tuesday
-    3: dailyEndTimes, // Wednesday
-    4: dailyEndTimes, // Thursday
-    5: dailyEndTimes  // Friday
+  // Days are computed from UTC day-of-week to stay consistent with UTC times above.
+  const weekCheckpointsUTC = {
+    1: dailyCheckpointsUTC, // Monday
+    2: dailyCheckpointsUTC, // Tuesday
+    3: dailyCheckpointsUTC, // Wednesday
+    4: dailyCheckpointsUTC, // Thursday
+    5: dailyCheckpointsUTC  // Friday
   };
 
   function pad(n) {
     return n.toString().padStart(2, '0');
   }
 
+  // Builds a CSS text-shadow value approximating a solid outline of the given color and
+  // radius, by stacking shadows at evenly-spaced angles around the text. text-shadow is
+  // always painted behind the glyph fill in HTML/CSS (unlike -webkit-text-stroke, whose
+  // stroke straddles the fill's edge and can visually overwhelm thin glyph strokes), so
+  // this reliably keeps the outline behind the actual text color.
+  function buildOutlineShadow(color, radius) {
+    const steps = 16; // number of shadow copies around the ring; higher = smoother outline
+    const shadows = [];
+    for (let i = 0; i < steps; i++) {
+      const angle = (i / steps) * 2 * Math.PI;
+      const x = (radius * Math.cos(angle)).toFixed(2);
+      const y = (radius * Math.sin(angle)).toFixed(2);
+      shadows.push(x + 'px ' + y + 'px 0 ' + color);
+    }
+    return shadows.join(', ');
+  }
+
+  // Debug time offset in milliseconds, applied on top of the real UTC clock for testing.
+  let debugOffsetMs = 0;
+
+  // Song-sync constants.
+  // The "drop" happens at this position (seconds) into outro.mp3.
+  const DROP_TIME_IN_SONG = 60.900;
+
+  // The drop should occur at the real-world moment the countdown display would read $1.99
+  // (i.e. when 119.4 seconds remain until the checkpoint).
+  const DROP_SECONDS_REMAINING = 119.4;
+
+  // Formula: seek = (drop's position in the song) - (seconds until the drop moment).
+  // If secondsUntilDrop real seconds remain before the drop happens, then right now the
+  // song should be sitting that many seconds BEFORE its own drop position - so we subtract
+  // secondsUntilDrop from DROP_TIME_IN_SONG to get the current playback position.
+  function computeSeekSeconds(secondsRemaining) {
+    const secondsUntilDrop = secondsRemaining - DROP_SECONDS_REMAINING;
+    return DROP_TIME_IN_SONG - secondsUntilDrop;
+  }
+
+  // The song sync-checks/starts once we're within this many seconds of the checkpoint -
+  // specifically, the exact instant the display would read $2.99 (179.4s remaining),
+  // comfortably before the "minute and change" window (120s) so it's already playing and
+  // in sync by the time that window opens.
+  const SONG_START_AT_REMAINING = 179.4;
+
+  // The song is seeked to the correct position exactly once, at the moment it starts
+  // playing, then left alone to play natively at its own pace for the rest of the approach -
+  // no further seeking, so there is no choppiness. This relies on the browser playing audio
+  // at true 1x real-time speed (which is standard) to land on the right times throughout.
+  let songStartedForThisApproach = false;
+
+  // Tracks whether confetti has already fired for the current "minute and change" window,
+  // so it only launches once per approach rather than every frame while active.
+  let confettiFiredForThisApproach = false;
+
+  // --- Random image stamping system ---
+  // While "minute and change" is active, a copy of content.png is stamped at a random
+  // position on screen at STAMP_INTERVAL_MS spacing. All stamps share one opacity, driven
+  // live by the audio's current volume, so they fade out together at exactly the same speed
+  // as the music fade (rather than each stamp fading independently on its own timer).
+  const imageStampLayer = document.getElementById('imageStampLayer');
+  const STAMP_IMAGE_SRC = 'https://arviture.com/minuteandchange/content.png';
+
+  // Requested spawn interval: 0.001s (1ms). Browsers cannot actually fire timers or frames
+  // that fast (setInterval is clamped to a few ms minimum, and requestAnimationFrame is
+  // tied to the display's refresh rate, typically ~60-120fps). So this drives a
+  // requestAnimationFrame loop that spawns as many stamps as this interval calls for based
+  // on real elapsed time each frame - at 1ms, that's still effectively "spawn as many
+  // stamps as possible every frame," which is the fastest this can honestly run in a browser.
+  const STAMP_INTERVAL_MS = 0.001;
+
+  // Hard cap on simultaneous stamps so the page doesn't run out of memory / crash the tab
+  // from an unbounded number of DOM image elements at this spawn rate.
+  const MAX_STAMPS = 3000;
+
+  let stampAnimHandle = null;
+  let stampLastSpawnTime = 0;
+  let stampSpawnDebt = 0; // fractional stamps owed, accumulated across frames
+
+  function spawnImageStamp() {
+    if (imageStampLayer.childElementCount >= MAX_STAMPS) {
+      imageStampLayer.removeChild(imageStampLayer.firstChild); // drop oldest to make room
+    }
+    const stamp = document.createElement('img');
+    stamp.src = STAMP_IMAGE_SRC;
+    stamp.className = 'image-stamp';
+    stamp.style.left = Math.random() * (window.innerWidth - 40) + 'px';
+    stamp.style.top = Math.random() * (window.innerHeight - 40) + 'px';
+    imageStampLayer.appendChild(stamp);
+  }
+
+  function stampAnimLoop(timestamp) {
+    const elapsedMs = timestamp - stampLastSpawnTime;
+    stampLastSpawnTime = timestamp;
+
+    // How many stamps "should" have spawned in this frame's elapsed time, at the
+    // requested interval - accumulated as a fractional debt so no time is lost between
+    // frames even at an interval far below one frame's duration.
+    stampSpawnDebt += elapsedMs / STAMP_INTERVAL_MS;
+    const spawnCount = Math.floor(stampSpawnDebt);
+    stampSpawnDebt -= spawnCount;
+
+    // Cap how many we actually create in a single frame so one slow frame (e.g. after
+    // the tab was backgrounded) can't try to spawn millions of stamps at once.
+    const cappedSpawnCount = Math.min(spawnCount, 200);
+    for (let i = 0; i < cappedSpawnCount; i++) {
+      spawnImageStamp();
+    }
+
+    stampAnimHandle = requestAnimationFrame(stampAnimLoop);
+  }
+
+  function startImageStamping() {
+    if (stampAnimHandle !== null) return; // already running
+    stampLastSpawnTime = performance.now();
+    stampSpawnDebt = 0;
+    stampAnimHandle = requestAnimationFrame(stampAnimLoop);
+  }
+
+  function stopImageStamping() {
+    if (stampAnimHandle !== null) {
+      cancelAnimationFrame(stampAnimHandle);
+      stampAnimHandle = null;
+    }
+  }
+
+  function clearImageStamps() {
+    imageStampLayer.innerHTML = '';
+    stampCountAtFadeStart = null;
+  }
+
+  // Deletes stamps (removes them from the DOM) so that the number remaining is
+  // proportional to fadeLevel (1 = keep all, 0 = delete all). This is a one-way ratchet
+  // within a single approach - it only ever deletes down to the target count, never
+  // "un-deletes," so calling it repeatedly as fadeLevel decreases progressively thins out
+  // the stamps until none are left, rather than fading their visibility.
+  let stampCountAtFadeStart = null;
+
+  function deleteStampsToMatchFadeLevel(fadeLevel) {
+    const currentCount = imageStampLayer.childElementCount;
+    if (currentCount === 0) return;
+
+    // Remember how many stamps existed the first time we start deleting this approach,
+    // so the proportion is stable even as new stamps keep spawning during the fade.
+    if (stampCountAtFadeStart === null || fadeLevel >= 1) {
+      stampCountAtFadeStart = currentCount;
+    }
+
+    const targetCount = Math.round(stampCountAtFadeStart * fadeLevel);
+    while (imageStampLayer.childElementCount > targetCount && imageStampLayer.firstChild) {
+      imageStampLayer.removeChild(imageStampLayer.firstChild);
+    }
+  }
+
+  // --- Confetti particle system ---
+  const confettiCanvas = document.getElementById('confettiCanvas');
+  const confettiCtx = confettiCanvas.getContext('2d');
+  let confettiParticles = [];
+  let confettiAnimating = false;
+
+  function resizeConfettiCanvas() {
+    confettiCanvas.width = window.innerWidth;
+    confettiCanvas.height = window.innerHeight;
+  }
+  resizeConfettiCanvas();
+  window.addEventListener('resize', resizeConfettiCanvas);
+
+  const CONFETTI_COLORS = ['#e63946', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6', '#e67e22'];
+
+  function launchConfetti() {
+    const count = 1000;
+    for (let i = 0; i < count; i++) {
+      confettiParticles.push({
+        x: Math.random() * confettiCanvas.width,
+        y: -20 - Math.random() * confettiCanvas.height * 0.3,
+        vx: (Math.random() - 0.5) * 2,
+        vy: 2 + Math.random() * 3,
+        size: (6 + Math.random() * 6) * 2, // double size
+        rotation: Math.random() * 360,
+        rotationSpeed: (Math.random() - 0.5) * 10,
+        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+        life: 0,
+        maxLife: 220 + Math.random() * 80
+      });
+    }
+    if (!confettiAnimating) {
+      confettiAnimating = true;
+      requestAnimationFrame(animateConfetti);
+    }
+  }
+
+  function animateConfetti() {
+    confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+
+    confettiParticles.forEach((p) => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.02; // slight gravity
+      p.rotation += p.rotationSpeed;
+      p.life++;
+
+      confettiCtx.save();
+      confettiCtx.translate(p.x, p.y);
+      confettiCtx.rotate((p.rotation * Math.PI) / 180);
+      confettiCtx.globalAlpha = 1; // fully opaque for its whole lifetime, not fading out
+      confettiCtx.fillStyle = p.color;
+      confettiCtx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+      confettiCtx.restore();
+    });
+
+    confettiParticles = confettiParticles.filter(
+      (p) => p.life < p.maxLife && p.y < confettiCanvas.height + 40
+    );
+
+    if (confettiParticles.length > 0) {
+      requestAnimationFrame(animateConfetti);
+    } else {
+      confettiAnimating = false;
+      confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+    }
+  }
+
+  function getNowUTC() {
+    return new Date(Date.now() + debugOffsetMs);
+  }
+
+  // Color-transition timing constants (all in secondsRemaining until the checkpoint).
+  // Going in:
+  //   - TEXT only: $2:41 -> $2:30 (144.6s -> 138.0s remaining), black -> white.
+  //   - Everything else (background): $2:41 -> $2:10 (144.6s -> 126.0s remaining),
+  //     white -> black.
+  // Reverse (both together): $1:00 -> $0:90 (60.6s -> 54.0s remaining), back to
+  //   white background / black text.
+  const TEXT_DARKEN_START_REMAINING = 144.6; // $2:41
+  const TEXT_DARKEN_END_REMAINING = 138.0;   // $2:30
+  const BG_DARKEN_START_REMAINING = 144.6;   // $2:41
+  const BG_DARKEN_END_REMAINING = 126.0;     // $2:10
+  const REVERSE_START_REMAINING = 60.6;      // $1:00
+  const REVERSE_END_REMAINING = 54.0;        // $0:90
+
+  // 0 = fully white-background/black-text (at rest), 1 = fully black-background/white-text.
+  // secondsRemaining may be null (no checkpoint left today), in which case this always
+  // returns 0 (fully at rest).
+  function computeBlackness(secondsRemaining, darkenStart, darkenEnd) {
+    if (secondsRemaining === null) return 0;
+    if (secondsRemaining <= darkenStart && secondsRemaining >= darkenEnd) {
+      const progress = (darkenStart - secondsRemaining) / (darkenStart - darkenEnd);
+      return Math.max(0, Math.min(1, progress));
+    } else if (secondsRemaining < darkenEnd && secondsRemaining > REVERSE_START_REMAINING) {
+      return 1; // fully transitioned, holding until the reverse window begins
+    } else if (secondsRemaining <= REVERSE_START_REMAINING && secondsRemaining >= REVERSE_END_REMAINING) {
+      const progress = (REVERSE_START_REMAINING - secondsRemaining) / (REVERSE_START_REMAINING - REVERSE_END_REMAINING);
+      return 1 - Math.max(0, Math.min(1, progress));
+    } else if (secondsRemaining < REVERSE_END_REMAINING) {
+      return 0; // fully back to rest
+    }
+    return 0; // before the darken window even starts
+  }
+
   function update() {
-    const now = new Date();
-    const day = now.getDay();
+    const now = getNowUTC();
+    const day = now.getUTCDay();
     const statusEl = document.getElementById('status');
     const amountEl = document.getElementById('amount');
+    const audioEl = document.getElementById('outroAudio');
 
-    const endTimes = weekEndTimes[day] || [];
+    const checkpoints = weekCheckpointsUTC[day] || [];
 
-    // Find the next period-end boundary today that is still in the future.
+    // Find the next checkpoint today (in UTC) that is still in the future.
     let msRemaining = null;
 
-    for (const [eh, em] of endTimes) {
-      const end = new Date(now);
-      end.setHours(eh, em, 0, 0);
+    for (const [eh, em] of checkpoints) {
+      const target = new Date(now);
+      target.setUTCHours(eh, em, 0, 0);
 
-      if (end > now) {
-        msRemaining = end - now;
+      if (target > now) {
+        msRemaining = target - now;
         break;
       }
     }
@@ -109,26 +460,123 @@
     const haveTarget = msRemaining !== null;
     const secondsRemaining = haveTarget ? msRemaining / 1000 : null;
 
-    // "a minute and change" window: between 2 minutes and 1 minute left until the boundary
+    // "a minute and change" window: between 2 minutes and 1 minute left until the checkpoint
     const haveMinuteAndChange = haveTarget &&
       secondsRemaining <= 120 && secondsRemaining >= 60;
 
+    // The .status/.amount text also gets an outline stroke matching the CURRENT background
+    // color (kept in sync every frame below), so the text stays visible against the busy
+    // animated background regardless of what's behind it.
+    const textBlackness = computeBlackness(secondsRemaining, TEXT_DARKEN_START_REMAINING, TEXT_DARKEN_END_REMAINING);
+    const bgBlackness = computeBlackness(secondsRemaining, BG_DARKEN_START_REMAINING, BG_DARKEN_END_REMAINING);
+
+    // Interpolate background and text as grayscale values between white (255) and black (0).
+    const bgGrayValue = Math.round(255 * (1 - bgBlackness));
+    const bgColor = 'rgb(' + bgGrayValue + ',' + bgGrayValue + ',' + bgGrayValue + ')';
+    // Text is the INVERSE of the background: black (0) at rest, white (255) once fully
+    // transitioned - i.e. textGrayValue rises WITH blackness, opposite of bgGrayValue.
+    const textGrayValue = Math.round(255 * textBlackness);
+    const textColor = 'rgb(' + textGrayValue + ',' + textGrayValue + ',' + textGrayValue + ')';
+
+    document.body.style.background = bgColor;
+    document.body.style.color = textColor;
+    amountEl.style.color = textColor;
+
+    // Build the outline as a ring of text-shadows in the current background color,
+    // spaced around a circle at the stroke's radius (4.5px = 3x the original 1.5px).
+    // text-shadow always paints behind the glyph fill, unlike -webkit-text-stroke (which
+    // straddles the outline and can visually overwhelm the fill), so this reliably keeps
+    // the outline behind the actual text.
+    const outlineShadow = buildOutlineShadow(bgColor, 4.5);
+    statusEl.style.textShadow = outlineShadow;
+    amountEl.style.textShadow = outlineShadow;
+
     if (haveMinuteAndChange) {
-      statusEl.textContent = 'We have a minute and change.';
+      statusEl.textContent = 'Alright guys, we have just a minute and change left!';
       statusEl.className = 'status green';
     } else {
       statusEl.textContent = "We currently don't have a minute and change.";
       statusEl.className = 'status red';
     }
 
-    // Represent time remaining until the next period-end boundary as "change":
+    // Image stamping: actively spawning random stamps while "minute and change" is active
+    // OR while still inside the fade-out window (down to $0:90 / 54.0s remaining) so the
+    // fade-out (progressive deletion below) has stamps to actually delete over its full
+    // 60.6s-54.0s span, rather than everything getting hard-cleared right at the 60s mark
+    // partway through that window. Stops spawning and clears existing stamps once we're
+    // fully past the fade-out.
+    const STAMP_ACTIVE_UNTIL_REMAINING = 54.0; // matches FADE_END_REMAINING below
+    const stampingActive = haveTarget && secondsRemaining <= 120 && secondsRemaining >= STAMP_ACTIVE_UNTIL_REMAINING;
+    if (stampingActive) {
+      startImageStamping();
+    } else {
+      stopImageStamping();
+      clearImageStamps();
+    }
+
+    // Represent time remaining until the next checkpoint as "change":
     // dollars = whole minutes remaining, cents = seconds remaining scaled to a 0-99 range.
-    // Uses fractional (millisecond-precision) seconds and requestAnimationFrame so the
-    // cents value interpolates smoothly instead of jumping once per second.
+    // Computed here (before the audio sync block) so the sync logic can gate on cents.
+    let minutesRemaining = null;
+    let cents = null;
     if (haveTarget) {
-      const minutesRemaining = Math.floor(secondsRemaining / 60);
+      minutesRemaining = Math.floor(secondsRemaining / 60);
       const secondsPart = secondsRemaining % 60;
-      const cents = Math.floor((secondsPart / 60) * 100);
+      cents = Math.floor((secondsPart / 60) * 100);
+    }
+
+    // Song sync: seek the song to the correct position exactly once, at the start of this
+    // approach to the checkpoint, then let it play natively with no further seeking (to
+    // avoid choppiness). The one-time seek is timed so the song has already been playing
+    // since SONG_START_AT_REMAINING, so by the "minute and change" window it should have
+    // naturally reached the right spot - the seek is a correction in case play() had any
+    // startup delay, not a repeated re-sync.
+    const withinSongWindow = haveTarget && secondsRemaining <= SONG_START_AT_REMAINING && secondsRemaining > 0;
+
+    if (withinSongWindow) {
+      if (!songStartedForThisApproach) {
+        const desiredSongPosition = Math.max(0, computeSeekSeconds(secondsRemaining));
+        audioEl.currentTime = desiredSongPosition;
+        audioEl.play().catch(() => { /* autoplay may be blocked until user interacts with the page */ });
+        songStartedForThisApproach = true;
+      }
+      // No further currentTime writes after the initial seek - the song plays natively
+      // at its own pace from here, relying on the browser's real-time playback clock.
+
+      // Fade/delete: audio volume still fades smoothly from $1:00 down to $0:90
+      // (secondsRemaining roughly 60.6 down to 54.0). The image stamps do NOT fade
+      // visually - instead they are progressively DELETED (removed from the DOM) as
+      // fadeLevel decreases, so that by $0:90 every stamp is gone rather than invisible.
+      const FADE_START_REMAINING = 60.6; // display reads ~$1.00
+      const FADE_END_REMAINING = 54.0;   // display reads ~$0.90
+      let fadeLevel;
+      if (secondsRemaining >= FADE_START_REMAINING) {
+        fadeLevel = 1;
+      } else if (secondsRemaining <= FADE_END_REMAINING) {
+        fadeLevel = 0;
+      } else {
+        fadeLevel = (secondsRemaining - FADE_END_REMAINING) / (FADE_START_REMAINING - FADE_END_REMAINING);
+        fadeLevel = Math.max(0, Math.min(1, fadeLevel));
+      }
+      audioEl.volume = fadeLevel;
+      deleteStampsToMatchFadeLevel(fadeLevel);
+    } else {
+      if (!audioEl.paused) {
+        audioEl.pause();
+      }
+      songStartedForThisApproach = false;
+      audioEl.volume = 1; // reset for the next approach
+    }
+
+    // Confetti: fire once, right at the moment we enter the "minute and change" window.
+    if (haveMinuteAndChange && !confettiFiredForThisApproach) {
+      launchConfetti();
+      confettiFiredForThisApproach = true;
+    } else if (!haveMinuteAndChange) {
+      confettiFiredForThisApproach = false;
+    }
+
+    if (haveTarget) {
       amountEl.textContent = '$' + minutesRemaining + '.' + pad(cents);
     } else {
       amountEl.textContent = '$0.00';
@@ -140,6 +588,120 @@
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
+
+  // Debug box: press Numpad Enter to toggle visibility of the time-offset debug tool.
+  // Accepts a wall-clock time (e.g. "7:57 am") interpreted as America/New_York (Eastern) time,
+  // and computes the millisecond offset needed to make "now" equal that time today.
+  const debugBox = document.getElementById('debugBox');
+  const debugTimeInput = document.getElementById('debugTime');
+  const debugStatusEl = document.getElementById('debugStatus');
+  const debugApplyBtn = document.getElementById('debugApply');
+  const debugResetBtn = document.getElementById('debugReset');
+
+  document.addEventListener('keydown', (e) => {
+    // NumpadEnter is the standard code for the numeric keypad Enter key.
+    if (e.code === 'NumpadEnter') {
+      debugBox.classList.toggle('visible');
+      if (debugBox.classList.contains('visible')) {
+        debugTimeInput.focus();
+      }
+    }
+  });
+
+  function parseTimeToEasternOffset(input) {
+    // Parses strings like "7:57 am", "7:57am", "13:05", "1:05 pm",
+    // and now also with optional seconds (decimal allowed): "7:57:30.5 am", "13:05:00.25".
+    // Returns {hours, minutes, seconds} in 24-hour form, or null if it can't be parsed.
+    const match = input.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{1,2}(?:\.\d+)?))?\s*(am|pm)?$/i);
+    if (!match) return null;
+
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    const seconds = match[3] ? parseFloat(match[3]) : 0;
+    const meridiem = match[4] ? match[4].toLowerCase() : null;
+
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || seconds < 0 || seconds >= 60) return null;
+
+    if (meridiem === 'am') {
+      if (hours === 12) hours = 0;
+    } else if (meridiem === 'pm') {
+      if (hours !== 12) hours += 12;
+    }
+    // If no am/pm given, hours is treated as already 24-hour.
+
+    return { hours, minutes, seconds };
+  }
+
+  function applyDebugTime() {
+    const parsed = parseTimeToEasternOffset(debugTimeInput.value);
+
+    if (!parsed) {
+      debugStatusEl.textContent = 'invalid time format';
+      return;
+    }
+
+    // Build "today at that Eastern time" by working in UTC (EDT = UTC-4).
+    const realNow = new Date();
+    const targetUTC = new Date(realNow);
+    const wholeSeconds = Math.floor(parsed.seconds);
+    const fractionalMs = Math.round((parsed.seconds - wholeSeconds) * 1000);
+    targetUTC.setUTCHours(parsed.hours + 4, parsed.minutes, wholeSeconds, fractionalMs);
+
+    debugOffsetMs = targetUTC - realNow;
+    debugStatusEl.textContent = 'set to ' + debugTimeInput.value + ' ET';
+
+    // The simulated "now" just jumped, possibly by a large amount, so any in-progress
+    // song approach is stale. Reset the start flag (and pause) so update() re-evaluates
+    // from scratch and seeks the song to wherever it needs to be to hit the drop correctly
+    // under the new simulated time.
+    songStartedForThisApproach = false;
+    const audioEl = document.getElementById('outroAudio');
+    audioEl.pause();
+
+    // Compute and log what the next update() tick will seek the audio to, given this new
+    // simulated time, so it's easy to verify the seek target is correct after Apply.
+    const newNow = getNowUTC();
+    const day = newNow.getUTCDay();
+    const checkpoints = weekCheckpointsUTC[day] || [];
+    let msRemaining = null;
+    for (const [eh, em] of checkpoints) {
+      const target = new Date(newNow);
+      target.setUTCHours(eh, em, 0, 0);
+      if (target > newNow) {
+        msRemaining = target - newNow;
+        break;
+      }
+    }
+    if (msRemaining !== null) {
+      const secondsRemaining = msRemaining / 1000;
+      if (secondsRemaining <= SONG_START_AT_REMAINING) {
+        const seekTo = Math.max(0, computeSeekSeconds(secondsRemaining));
+        console.log('[applyDebugTime] audio will seek to', seekTo.toFixed(3), 'seconds');
+      } else {
+        console.log('[applyDebugTime] not yet within the song-sync window; audio will not seek yet');
+      }
+    } else {
+      console.log('[applyDebugTime] no checkpoint remaining today; audio will not seek');
+    }
+  }
+
+  debugApplyBtn.addEventListener('click', applyDebugTime);
+  debugTimeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      applyDebugTime();
+    }
+  });
+  debugResetBtn.addEventListener('click', () => {
+    debugOffsetMs = 0;
+    debugTimeInput.value = '';
+    debugStatusEl.textContent = 'offset reset';
+
+    // Real time just resumed (possibly a big jump from wherever the debug offset had us),
+    // so force a fresh seek on the next update() tick rather than leaving the song wherever
+    // it happened to land under the old simulated time.
+    songStartedForThisApproach = false;
+    document.getElementById('outroAudio').pause();
+  });
 </script>
 </body>
 </html>
