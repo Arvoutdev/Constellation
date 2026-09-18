@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Loading...</title>
+    <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
+        #t {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <object>
+        <embed src="" width="100%" height="100%" id="t"/>
+    </object>
+
+    <script>
+        var gameNames = {
+            "bo": "Bloxorz",
+            "sb": "Fireboy and Watergirl",
+            "ab": "Absorption",
+            "t1": "Transmorphers 1",
+            "t2": "Transmorphers 2",
+            "b1": "Bob The Robber 1",
+            "b2": "Bob The Robber 2",
+            "pr": "Pipe Rider",
+            "t9": "Thunderax 9K",
+            "sb2": "Fireboy and Watergirl 2",
+            "rs": "Riddle School Transfer",
+            "rs2-5": "Riddle School 2-5",
+            "r3": "Run 3",
+            "rs2": "Riddle School Transfer 2",
+            "hs": "Henry Stickman",
+            "hs2-5": "Henry Stickman 2-5",
+            "qz": "The Impossible Quiz",
+            "pp": "Papa's Pizzeria",
+            "ig": "World's Hardest Game",
+            "mm": "Mega Miner",
+            "ib": "Inspector Blindson",
+            "fp": "Fancypants",
+            "fp2": "Fancypants 2",
+            "md": "Mini Dash",
+            "sw": "Shape Switcher",
+            "ch": "Checkpoint",
+            "go": "Gummo",
+            "w1-3": "Wheely 1-3",
+            "tb": "Tarzan Ball",
+            "rw": "Raft Wars",
+            "dl": "Duck Life",
+            "dl4": "Duck Life 4",
+            "po": "Portal",
+            "lw": "Little Wheel",
+            "zo": "Zombotron",
+            "sm": "Scrap Metal Heroes"
+        };
+
+        window.addEventListener("load", function () {
+            var params = new URLSearchParams(window.location.search);
+            var file = params.get("file");
+
+            if (file) {
+                var code = file.toLowerCase();
+                document.title = gameNames[code] || code;
+                document.getElementById("t").ruffle().load("gmain/" + code + ".swf");
+            } else {
+                document.body.innerHTML = "<h2 style='color:white;font-family:sans-serif'>No file specified. Use ?file=code in the URL.</h2>";
+            }
+        });
+    </script>
+</body>
+</html>
