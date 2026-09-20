@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Squash II</title>
+<style>
+  body {
+    font-family: "Times New Roman", Times, serif;
+    background: #ffffff;
+    color: #000000;
+    max-width: 700px;
+    margin: 20px auto;
+    padding: 0 12px;
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  .players {
+    display: flex;
+    gap: 16px;
+    margin: 20px 0;
+  }
+  .panel {
+    flex: 1;
+    padding: 12px;
+  }
+  #panel-0 {
+    border: 2px solid #ff0000;
+  }
+  #panel-1 {
+    border: 2px solid #0000ff;
+  }
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .panel-title {
+    flex: 1;
+    min-width: 0;
+  }
+  .panel-title h2 {
+    margin: 0 0 2px 0;
+    overflow-wrap: anywhere;
+  }
+  .gamepoint {
+    font-weight: bold;
+    min-height: 20px;
+  }
+  .panel-actions {
+    flex: none;
+    text-align: right;
+  }
+  .action-btn {
+    display: none;
+    font-size: 14px;
+    padding: 4px 8px;
+    white-space: nowrap;
+  }
+  .gamble-choice {
+    display: none;
+    margin-top: 8px;
+    text-align: right;
+  }
+  .gamble-choice span {
+    font-weight: bold;
+  }
+  .gamble-choice button {
+    font-size: 14px;
+    padding: 4px 8px;
+    margin-left: 4px;
+  }
+  #panel-0 .action-btn, #panel-0 .gamble-choice button {
+    border: 2px solid #ff0000;
+  }
+  #panel-1 .action-btn, #panel-1 .gamble-choice button {
+    border: 2px solid #0000ff;
+  }
+  .score {
+    font-size: 48px;
+    text-align: center;
+    margin: 8px 0;
+  }
+  .label {
+    font-weight: bold;
+  }
+  button {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 16px;
+    background: #ffffff;
+    color: #000000;
+    padding: 8px 12px;
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) {
+    background: #eeeeee;
+  }
+  button:disabled {
+    color: #888888;
+    cursor: not-allowed;
+  }
+  .action-btn, .gamble-choice button {
+    font-size: 14px;
+    padding: 4px 8px;
+  }
+  .win-btn {
+    width: 100%;
+    margin-top: 10px;
+  }
+  #win-0 {
+    border: 2px solid #ff0000;
+  }
+  #win-1 {
+    border: 2px solid #0000ff;
+  }
+  #new-game {
+    display: block;
+    margin: 0 auto;
+    border: 2px solid #000000;
+  }
+  #setup {
+    display: none;
+    border: 2px solid #000000;
+    padding: 12px;
+    margin: 12px auto 0 auto;
+    max-width: 400px;
+  }
+  #setup p {
+    margin: 0 0 8px 0;
+  }
+  .name-row {
+    margin-bottom: 8px;
+  }
+  .name-row label {
+    display: inline-block;
+    width: 80px;
+    font-weight: bold;
+  }
+  .name-row input {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 16px;
+    padding: 4px 6px;
+    width: 220px;
+  }
+  #name-0 {
+    border: 2px solid #ff0000;
+  }
+  #name-1 {
+    border: 2px solid #0000ff;
+  }
+  #setup-buttons {
+    text-align: center;
+    margin-top: 12px;
+  }
+  #setup-buttons button {
+    border: 2px solid #000000;
+    margin: 0 4px;
+  }
+  #game-area {
+    display: none;
+  }
+  #goal {
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
+    margin-top: 16px;
+  }
+  #winner {
+    text-align: center;
+    font-size: 28px;
+    font-weight: bold;
+    margin: 8px 0 0 0;
+    min-height: 34px;
+  }
+  #log-panel {
+    border: 2px solid #000000;
+    padding: 12px;
+    margin-top: 20px;
+    min-height: 60px;
+  }
+  #log-panel h3 {
+    margin: 0 0 6px 0;
+  }
+  #log-panel p {
+    margin: 2px 0;
+  }
+</style>
+</head>
+<body>
+
+<h1>Squash II</h1>
+
+<button id="new-game">New Game</button>
+
+<div id="setup">
+  <p id="setup-warning">Are you sure you want to start a new game? The current game will be lost.</p>
+  <p>Player names:</p>
+  <div class="name-row">
+    <label for="name-0">Player 1</label>
+    <input id="name-0" type="text" maxlength="20" placeholder="Player 1">
+  </div>
+  <div class="name-row">
+    <label for="name-1">Player 2</label>
+    <input id="name-1" type="text" maxlength="20" placeholder="Player 2">
+  </div>
+  <div id="setup-buttons">
+    <button id="setup-start">Start Game</button>
+    <button id="setup-cancel">Cancel</button>
+  </div>
+</div>
+
+<div id="game-area">
+  <div id="goal">Game to 11</div>
+  <div id="winner"></div>
+
+  <div class="players">
+    <div class="panel" id="panel-0">
+      <div class="panel-head">
+        <div class="panel-title">
+          <h2 id="name-display-0">Player 1</h2>
+          <div class="gamepoint" id="gp-0"></div>
+        </div>
+        <div class="panel-actions">
+          <button class="action-btn" id="redo-0">Do Redo</button>
+          <button class="action-btn" id="gamble-0">Gamble</button>
+        </div>
+      </div>
+      <div class="gamble-choice" id="choice-0">
+        <span>Spin result:</span>
+        <button id="double-0">Double</button>
+        <button id="nothing-0">Nothing</button>
+        <button id="cancel-0">Cancel</button>
+      </div>
+      <div class="score" id="score-0">0</div>
+      <div><span class="label">Buff:</span> <span id="buff-0">-</span></div>
+      <div><span class="label">Nerf:</span> <span id="nerf-0">-</span></div>
+      <button class="win-btn" id="win-0">Player 1 Wins Point</button>
+    </div>
+
+    <div class="panel" id="panel-1">
+      <div class="panel-head">
+        <div class="panel-title">
+          <h2 id="name-display-1">Player 2</h2>
+          <div class="gamepoint" id="gp-1"></div>
+        </div>
+        <div class="panel-actions">
+          <button class="action-btn" id="redo-1">Do Redo</button>
+          <button class="action-btn" id="gamble-1">Gamble</button>
+        </div>
+      </div>
+      <div class="gamble-choice" id="choice-1">
+        <span>Spin result:</span>
+        <button id="double-1">Double</button>
+        <button id="nothing-1">Nothing</button>
+        <button id="cancel-1">Cancel</button>
+      </div>
+      <div class="score" id="score-1">0</div>
+      <div><span class="label">Buff:</span> <span id="buff-1">-</span></div>
+      <div><span class="label">Nerf:</span> <span id="nerf-1">-</span></div>
+      <button class="win-btn" id="win-1">Player 2 Wins Point</button>
+    </div>
+  </div>
+
+  <div id="log-panel">
+    <h3>Log</h3>
+    <div id="log"></div>
+  </div>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  const BASE_TARGET = 11;      // "Game to 11"
+  const FIB = [1, 1, 2, 3, 5]; // Fibonacci Streak: stays at 5 after the fifth
+
+  let game = null;
+  let names = ["Player 1", "Player 2"];
+  let choosingGamble = null;   // index of the player picking a gamble result, or null
+
+  // ---- Rules helpers ---------------------------------------------------
+
+  // A player's target score (Win at 15 changes it).
+  function targetOf(i) {
+    return game.players[i].nerf.target || BASE_TARGET;
+  }
+
+  // Won = reached their target AND ahead by at least 2.
+  function hasWon(i) {
+    const me = game.players[i], opp = game.players[1 - i];
+    return me.score >= targetOf(i) && me.score - opp.score >= 2;
+  }
+
+  // Game point = winning one ordinary point would win them the game
+  // (one point from their target, and it would put them ahead by 2).
+  function hasGamePoint(i) {
+    const me = game.players[i], opp = game.players[1 - i];
+    return me.score + 1 >= targetOf(i) && me.score + 1 - opp.score >= 2;
+  }
+
+  // ---- Buffs and nerfs (names are all that is shown in the UI) -----------
+  // value(me, opp, oppIndex): what a point is worth to the winner (default 1)
+  // afterWin(me, opp): extra effect after the point is scored
+  // redos / gambles: how many the player starts with
+  // target: replaces the score needed to win
+
+  const BUFFS = [
+    { name: "Lifesteal",        afterWin: (me, opp) => { opp.score -= 1; } },  // can go negative
+    { name: "Double Points",    value: () => 2 },
+    { name: "Fibonacci Streak", value: (me) => FIB[Math.min(me.streak, FIB.length) - 1] },
+    { name: "3 Redos",          redos: 3 },
+    { name: "Gambler",          gambles: 3 },
+    { name: "Double Bounce" },
+    { name: "Last Chance",      value: (me, opp, oppIndex) => hasGamePoint(oppIndex) ? 3 : 1 }
+  ];
+
+  const NERFS = [
+    { name: "Other Hand Grip" },
+    { name: "Shortgrip" },
+    { name: "Win at 15", target: 15 },
+    { name: "Never Serve" },
+    { name: "Deep" },
+    { name: "Above the red line" },
+    { name: "Down and in" }
+  ];
+
+  function pick(list) {
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
+  // ---- Log -----------------------------------------------------------------
+
+  // Newest line is inserted at the top.
+  function log(msg) {
+    const p = document.createElement("p");
+    p.textContent = msg;
+    const el = $("log");
+    el.insertBefore(p, el.firstChild);
+  }
+
+  function scoreTag() {
+    return "[" + game.players[0].score + " | " + game.players[1].score + "]";
+  }
+
+  // ---- Rendering -------------------------------------------------------------
+
+  function goalText() {
+    let text = "Game to " + BASE_TARGET;
+    const different = [0, 1]
+      .filter(i => targetOf(i) !== BASE_TARGET)
+      .map(i => names[i] + " to " + targetOf(i));
+    if (different.length) text += " (" + different.join(", ") + ")";
+    return text;
+  }
+
+  function canGamble(i) {
+    const me = game.players[i];
+    const lp = game.lastPoint;
+    return !!(me.buff.gambles && me.gamblesLeft > 0 && lp && lp.winner === i && !lp.gambled);
+  }
+
+  // Redo rules: only for the 3 Redos owner, only while the game is still going,
+  // only right after a point is played (no chaining), and only once per point.
+  function canRedo(i) {
+    const me = game.players[i];
+    return !!(me.buff.redos && me.redosLeft > 0 && !game.over &&
+              game.history.length > 0 && game.canRedo &&
+              game.redone.indexOf(game.pointNumber) === -1);
+  }
+
+  function render() {
+    $("goal").textContent = goalText();
+    for (let i = 0; i < 2; i++) {
+      const p = game.players[i];
+      $("name-display-" + i).textContent = names[i];
+      $("gp-" + i).textContent = (!game.over && hasGamePoint(i)) ? "Game point" : "";
+      $("score-" + i).textContent = p.score;
+      $("buff-" + i).textContent = p.buff.name;
+      $("nerf-" + i).textContent = p.nerf.name;
+      $("win-" + i).textContent = names[i] + " Wins Point";
+      $("win-" + i).disabled = game.over;
+
+      const redo = $("redo-" + i);
+      redo.style.display = p.buff.redos ? "inline-block" : "none";
+      redo.textContent = "Do Redo (" + p.redosLeft + " left)";
+      redo.disabled = !canRedo(i);
+
+      const gamble = $("gamble-" + i);
+      gamble.style.display = p.buff.gambles ? "inline-block" : "none";
+      gamble.textContent = "Gamble (" + p.gamblesLeft + " left)";
+      gamble.disabled = !canGamble(i);
+
+      $("choice-" + i).style.display =
+        (choosingGamble === i && canGamble(i)) ? "block" : "none";
+    }
+    $("winner").textContent = game.over ? names[game.winner] + " wins the game!" : "";
+  }
+
+  // Recompute who (if anyone) has won, then redraw.
+  function update() {
+    game.over = false;
+    game.winner = null;
+    for (let i = 0; i < 2; i++) {
+      if (hasWon(i)) {
+        game.over = true;
+        game.winner = i;
+      }
+    }
+    render();
+  }
+
+  // ---- Game flow ---------------------------------------------------------------
+
+  function newGame() {
+    game = {
+      pointNumber: 0,
+      over: false,
+      winner: null,
+      history: [],      // one snapshot per point, used by Do Redo
+      lastPoint: null,  // { winner, gain, gambled } - used by Gamble
+      canRedo: false,   // true only right after a point is played (no chaining redos)
+      redone: [],       // point numbers that already used their one redo
+      players: [0, 1].map(() => {
+        const buff = pick(BUFFS);
+        const nerf = pick(NERFS);
+        return {
+          score: 0,
+          streak: 0,
+          buff: buff,
+          nerf: nerf,
+          redosLeft: buff.redos || 0,
+          gamblesLeft: buff.gambles || 0
+        };
+      })
+    };
+    choosingGamble = null;
+    $("game-area").style.display = "block";
+    $("log").innerHTML = "";
+    // Logged in chronological order; inserting at the top makes the log
+    // read Player 2 / Player 1 / New game started from top to bottom.
+    log("New game started.");
+    log(names[0] + " got " + game.players[0].buff.name + " and " + game.players[0].nerf.name + ".");
+    log(names[1] + " got " + game.players[1].buff.name + " and " + game.players[1].nerf.name + ".");
+    update();
+  }
+
+  // Everything a redo brings back (redos left are NOT restored: a redo stays spent).
+  function snapshot() {
+    return {
+      players: game.players.map(p => ({
+        score: p.score,
+        streak: p.streak,
+        gamblesLeft: p.gamblesLeft
+      })),
+      pointNumber: game.pointNumber,
+      lastPoint: game.lastPoint ? Object.assign({}, game.lastPoint) : null
+    };
+  }
+
+  function winPoint(i) {
+    if (!game || game.over) return;
+    const j = 1 - i;
+    const me = game.players[i];
+    const opp = game.players[j];
+
+    game.history.push(snapshot());
+    choosingGamble = null;
+
+    me.streak += 1;
+    opp.streak = 0;
+
+    const gain = me.buff.value ? me.buff.value(me, opp, j) : 1;
+    me.score += gain;
+    if (me.buff.afterWin) me.buff.afterWin(me, opp);
+
+    game.pointNumber += 1;
+    game.lastPoint = { winner: i, gain: gain, gambled: false };
+    game.canRedo = true;
+
+    log(scoreTag() + " Point #" + game.pointNumber + " won by " + names[i]);
+    update();
+  }
+
+  // Do Redo: undo the last point (scores, streaks, gambles go back to how they
+  // were before it). The redo itself stays used up, that point can't be redone
+  // again once replayed, and it can't be used after the game is over.
+  function doRedo(i) {
+    if (!game || !canRedo(i)) return;
+    const me = game.players[i];
+
+    const undoneNumber = game.pointNumber;
+    const snap = game.history.pop();
+    snap.players.forEach((s, k) => {
+      game.players[k].score = s.score;
+      game.players[k].streak = s.streak;
+      game.players[k].gamblesLeft = s.gamblesLeft;
+    });
+    game.pointNumber = snap.pointNumber;
+    game.lastPoint = snap.lastPoint;
+    me.redosLeft -= 1;
+    game.redone.push(undoneNumber);
+    game.canRedo = false;
+    choosingGamble = null;
+
+    log(scoreTag() + " Point #" + undoneNumber + " undone by " + names[i] +
+        "'s redo (" + me.redosLeft + " left)");
+    update();
+  }
+
+  // Gamble: the racket spin was done for real; this records the result for the
+  // point the gambler just won. Double = the point counts twice, Nothing = not at all.
+  function recordGamble(i, result) {
+    if (!game || !canGamble(i)) return;
+    const me = game.players[i];
+    const lp = game.lastPoint;
+
+    if (result === "double") me.score += lp.gain;
+    else me.score -= lp.gain;
+    lp.gambled = true;
+    me.gamblesLeft -= 1;
+    choosingGamble = null;
+
+    log(scoreTag() + " " + names[i] + " gambled on Point #" + game.pointNumber + ": " +
+        (result === "double" ? "Double" : "Nothing") + " (" + me.gamblesLeft + " left)");
+    update();
+  }
+
+  // ---- New game setup (names + "are you sure") ----------------------------------
+
+  function openSetup() {
+    $("setup-warning").style.display = game ? "block" : "none";
+    if (game) {
+      $("name-0").value = names[0];
+      $("name-1").value = names[1];
+    }
+    $("setup").style.display = "block";
+    $("new-game").style.display = "none";
+    $("name-0").focus();
+  }
+
+  function closeSetup() {
+    $("setup").style.display = "none";
+    $("new-game").style.display = "block";
+  }
+
+  function startGame() {
+    names = [0, 1].map(i => $("name-" + i).value.trim() || ("Player " + (i + 1)));
+    closeSetup();
+    newGame();
+  }
+
+  // ---- Wiring ------------------------------------------------------------------------
+
+  $("new-game").addEventListener("click", openSetup);
+  $("setup-start").addEventListener("click", startGame);
+  $("setup-cancel").addEventListener("click", closeSetup);
+  ["name-0", "name-1"].forEach(id => {
+    $(id).addEventListener("keydown", e => {
+      if (e.key === "Enter") startGame();
+    });
+  });
+
+  for (let i = 0; i < 2; i++) {
+    $("win-" + i).addEventListener("click", () => winPoint(i));
+    $("redo-" + i).addEventListener("click", () => doRedo(i));
+    $("gamble-" + i).addEventListener("click", () => {
+      if (canGamble(i)) { choosingGamble = i; render(); }
+    });
+    $("double-" + i).addEventListener("click", () => recordGamble(i, "double"));
+    $("nothing-" + i).addEventListener("click", () => recordGamble(i, "nothing"));
+    $("cancel-" + i).addEventListener("click", () => { choosingGamble = null; render(); });
+  }
+
+  // Nothing but the title and New Game button shows until New Game is clicked.
+</script>
+
+</body>
+</html>
