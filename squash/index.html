@@ -79,6 +79,12 @@
   #panel-1 .action-btn, #panel-1 .gamble-choice button {
     border: 2px solid #0000ff;
   }
+  .target-line {
+    text-align: center;
+    font-size: 13px;
+    color: #444444;
+    min-height: 16px;
+  }
   .score {
     font-size: 48px;
     text-align: center;
@@ -116,9 +122,11 @@
   #win-1 {
     border: 2px solid #0000ff;
   }
-  #new-game {
-    display: block;
-    margin: 0 auto;
+  #top-buttons {
+    text-align: center;
+  }
+  #top-buttons button {
+    margin: 0 4px;
     border: 2px solid #000000;
   }
   #setup {
@@ -149,6 +157,39 @@
     border: 2px solid #ff0000;
   }
   #name-1 {
+    border: 2px solid #0000ff;
+  }
+  #choose-toggle {
+    display: block;
+    margin: 8px auto;
+    border: 2px solid #000000;
+    font-size: 14px;
+    padding: 4px 8px;
+  }
+  #choose-panel {
+    display: none;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #000000;
+  }
+  .choose-row {
+    margin-bottom: 8px;
+  }
+  .choose-row label {
+    display: inline-block;
+    width: 110px;
+    font-weight: bold;
+  }
+  .choose-row select {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 15px;
+    padding: 3px 4px;
+    width: 200px;
+  }
+  #pick-buff-0, #pick-nerf-0 {
+    border: 2px solid #ff0000;
+  }
+  #pick-buff-1, #pick-nerf-1 {
     border: 2px solid #0000ff;
   }
   #setup-buttons {
@@ -193,7 +234,10 @@
 
 <h1>Squash II</h1>
 
-<button id="new-game">New Game</button>
+<div id="top-buttons">
+  <button id="new-game">New Game</button>
+  <button id="undo-point" disabled>Undo Point</button>
+</div>
 
 <div id="setup">
   <p id="setup-warning">Are you sure you want to start a new game? The current game will be lost.</p>
@@ -209,6 +253,26 @@
   <div id="setup-buttons">
     <button id="setup-start">Start Game</button>
     <button id="setup-cancel">Cancel</button>
+  </div>
+
+  <button id="choose-toggle" type="button">Choose Buffs / Nerfs</button>
+  <div id="choose-panel">
+    <div class="choose-row">
+      <label for="pick-buff-0">Player 1 Buff</label>
+      <select id="pick-buff-0"></select>
+    </div>
+    <div class="choose-row">
+      <label for="pick-nerf-0">Player 1 Nerf</label>
+      <select id="pick-nerf-0"></select>
+    </div>
+    <div class="choose-row">
+      <label for="pick-buff-1">Player 2 Buff</label>
+      <select id="pick-buff-1"></select>
+    </div>
+    <div class="choose-row">
+      <label for="pick-nerf-1">Player 2 Nerf</label>
+      <select id="pick-nerf-1"></select>
+    </div>
   </div>
 </div>
 
@@ -235,6 +299,7 @@
         <button id="cancel-0">Cancel</button>
       </div>
       <div class="score" id="score-0">0</div>
+      <div class="target-line" id="target-0"></div>
       <div><span class="label">Buff:</span> <span id="buff-0">-</span></div>
       <div><span class="label">Nerf:</span> <span id="nerf-0">-</span></div>
       <button class="win-btn" id="win-0">Player 1 Wins Point</button>
@@ -258,6 +323,7 @@
         <button id="cancel-1">Cancel</button>
       </div>
       <div class="score" id="score-1">0</div>
+      <div class="target-line" id="target-1"></div>
       <div><span class="label">Buff:</span> <span id="buff-1">-</span></div>
       <div><span class="label">Nerf:</span> <span id="nerf-1">-</span></div>
       <button class="win-btn" id="win-1">Player 2 Wins Point</button>
@@ -274,7 +340,7 @@
   const $ = id => document.getElementById(id);
 
   const BASE_TARGET = 11;      // "Game to 11"
-  const FIB = [1, 1, 2, 3, 5]; // Fibonacci Streak: stays at 5 after the fifth
+  const FIB = [0, 1, 1, 2, 3, 5]; // Fibonacci Streak: 0,1,1,2,3,5, then stays at 5
 
   let game = null;
   let names = ["Player 1", "Player 2"];
@@ -293,11 +359,15 @@
     return me.score >= targetOf(i) && me.score - opp.score >= 2;
   }
 
-  // Game point = winning one ordinary point would win them the game
-  // (one point from their target, and it would put them ahead by 2).
+  // Game point = if this player won the next point (at its real value, whatever
+  // that point is worth for them) it would both reach their target AND put them
+  // ahead by at least 2. Simulates the streak the way winPoint() actually builds
+  // it: incremented BEFORE the value is computed.
   function hasGamePoint(i) {
     const me = game.players[i], opp = game.players[1 - i];
-    return me.score + 1 >= targetOf(i) && me.score + 1 - opp.score >= 2;
+    const simMe = Object.assign({}, me, { streak: me.streak + 1 });
+    const gain = me.buff.value ? me.buff.value(simMe, opp, 1 - i) : 1;
+    return me.score + gain >= targetOf(i) && me.score + gain - opp.score >= 2;
   }
 
   // ---- Buffs and nerfs (names are all that is shown in the UI) -----------
@@ -309,9 +379,9 @@
   const BUFFS = [
     { name: "Lifesteal",        afterWin: (me, opp) => { opp.score -= 1; } },  // can go negative
     { name: "Double Points",    value: () => 2 },
-    { name: "Fibonacci Streak", value: (me) => FIB[Math.min(me.streak, FIB.length) - 1] },
-    { name: "3 Redos",          redos: 3 },
-    { name: "Gambler",          gambles: 3 },
+    { name: "Fibonacci Streak", value: (me) => FIB[Math.min(me.streak - 1, FIB.length - 1)] },
+    { name: "5 Redos",          redos: 5 },
+    { name: "Gambler",          gambles: true, maxGamblesPerPoint: 3 },
     { name: "Double Bounce" },
     { name: "Last Chance",      value: (me, opp, oppIndex) => hasGamePoint(oppIndex) ? 3 : 1 }
   ];
@@ -355,28 +425,34 @@
     return text;
   }
 
+  // Gambler: up to 3 spins on the point they just won (a Double can be gambled
+  // again; a Nothing ends that point's chances). Resets to 0 uses on each new point.
   function canGamble(i) {
     const me = game.players[i];
     const lp = game.lastPoint;
-    return !!(me.buff.gambles && me.gamblesLeft > 0 && lp && lp.winner === i && !lp.gambled);
+    return !!(me.buff.gambles && lp && lp.winner === i && !lp.pointOver &&
+              me.gamblesUsedThisPoint < me.buff.maxGamblesPerPoint);
   }
 
   // Redo rules: only for the 3 Redos owner, only while the game is still going,
   // only right after a point is played (no chaining), and only once per point.
   function canRedo(i) {
     const me = game.players[i];
+    const top = game.history[game.history.length - 1];
     return !!(me.buff.redos && me.redosLeft > 0 && !game.over &&
-              game.history.length > 0 && game.canRedo &&
+              top && top.type === "point" && game.canRedo &&
               game.redone.indexOf(game.pointNumber) === -1);
   }
 
   function render() {
+    $("undo-point").disabled = !game || game.history.length === 0;
     $("goal").textContent = goalText();
     for (let i = 0; i < 2; i++) {
       const p = game.players[i];
       $("name-display-" + i).textContent = names[i];
       $("gp-" + i).textContent = (!game.over && hasGamePoint(i)) ? "Game point" : "";
       $("score-" + i).textContent = p.score;
+      $("target-" + i).textContent = targetOf(i) !== BASE_TARGET ? "(needs " + targetOf(i) + " to win)" : "";
       $("buff-" + i).textContent = p.buff.name;
       $("nerf-" + i).textContent = p.nerf.name;
       $("win-" + i).textContent = names[i] + " Wins Point";
@@ -389,7 +465,7 @@
 
       const gamble = $("gamble-" + i);
       gamble.style.display = p.buff.gambles ? "inline-block" : "none";
-      gamble.textContent = "Gamble (" + p.gamblesLeft + " left)";
+      gamble.textContent = "Gamble (" + (p.buff.maxGamblesPerPoint - p.gamblesUsedThisPoint) + " left this point)";
       gamble.disabled = !canGamble(i);
 
       $("choice-" + i).style.display =
@@ -413,25 +489,32 @@
 
   // ---- Game flow ---------------------------------------------------------------
 
-  function newGame() {
+  function byName(list, name) {
+    return list.find(x => x.name === name);
+  }
+
+  // choices, when given, is [{buff, nerf}, {buff, nerf}] with buff/nerf either
+  // a name string from BUFFS/NERFS or null/undefined for "Random".
+  function newGame(choices) {
     game = {
       pointNumber: 0,
       over: false,
       winner: null,
-      history: [],      // one snapshot per point, used by Do Redo
-      lastPoint: null,  // { winner, gain, gambled } - used by Gamble
-      canRedo: false,   // true only right after a point is played (no chaining redos)
-      redone: [],       // point numbers that already used their one redo
-      players: [0, 1].map(() => {
-        const buff = pick(BUFFS);
-        const nerf = pick(NERFS);
+      history: [],      // one snapshot per action (point or gamble); used by Undo Point and Do Redo
+      lastPoint: null,  // { winner, gain, pointOver } - used by Gamble
+      canRedo: false,   // Do Redo only works right after a point is played (no chaining)
+      redone: [],       // point numbers that already used their buff redo
+      players: [0, 1].map((_, i) => {
+        const chosen = choices && choices[i] ? choices[i] : {};
+        const buff = (chosen.buff && byName(BUFFS, chosen.buff)) || pick(BUFFS);
+        const nerf = (chosen.nerf && byName(NERFS, chosen.nerf)) || pick(NERFS);
         return {
           score: 0,
           streak: 0,
           buff: buff,
           nerf: nerf,
           redosLeft: buff.redos || 0,
-          gamblesLeft: buff.gambles || 0
+          gamblesUsedThisPoint: 0
         };
       })
     };
@@ -446,17 +529,36 @@
     update();
   }
 
-  // Everything a redo brings back (redos left are NOT restored: a redo stays spent).
-  function snapshot() {
+  // Full state snapshot, taken before each action (a point, or a gamble spin).
+  // Undo Point always pops the most recent one; Do Redo only pops entries of
+  // type "point" (and only the single most recent one, no chaining).
+  function snapshot(type) {
     return {
+      type: type, // "point" or "gamble"
       players: game.players.map(p => ({
         score: p.score,
         streak: p.streak,
-        gamblesLeft: p.gamblesLeft
+        gamblesUsedThisPoint: p.gamblesUsedThisPoint,
+        redosLeft: p.redosLeft
       })),
       pointNumber: game.pointNumber,
-      lastPoint: game.lastPoint ? Object.assign({}, game.lastPoint) : null
+      lastPoint: game.lastPoint ? Object.assign({}, game.lastPoint) : null,
+      canRedo: game.canRedo,
+      redone: game.redone.slice()
     };
+  }
+
+  function restore(snap) {
+    snap.players.forEach((s, k) => {
+      game.players[k].score = s.score;
+      game.players[k].streak = s.streak;
+      game.players[k].gamblesUsedThisPoint = s.gamblesUsedThisPoint;
+      game.players[k].redosLeft = s.redosLeft;
+    });
+    game.pointNumber = snap.pointNumber;
+    game.lastPoint = snap.lastPoint;
+    game.canRedo = snap.canRedo;
+    game.redone = snap.redone;
   }
 
   function winPoint(i) {
@@ -465,18 +567,19 @@
     const me = game.players[i];
     const opp = game.players[j];
 
-    game.history.push(snapshot());
+    game.history.push(snapshot("point"));
     choosingGamble = null;
 
     me.streak += 1;
     opp.streak = 0;
+    me.gamblesUsedThisPoint = 0;
 
     const gain = me.buff.value ? me.buff.value(me, opp, j) : 1;
     me.score += gain;
     if (me.buff.afterWin) me.buff.afterWin(me, opp);
 
     game.pointNumber += 1;
-    game.lastPoint = { winner: i, gain: gain, gambled: false };
+    game.lastPoint = { winner: i, gain: gain, pointOver: false };
     game.canRedo = true;
 
     log(scoreTag() + " Point #" + game.pointNumber + " won by " + names[i]);
@@ -492,14 +595,8 @@
 
     const undoneNumber = game.pointNumber;
     const snap = game.history.pop();
-    snap.players.forEach((s, k) => {
-      game.players[k].score = s.score;
-      game.players[k].streak = s.streak;
-      game.players[k].gamblesLeft = s.gamblesLeft;
-    });
-    game.pointNumber = snap.pointNumber;
-    game.lastPoint = snap.lastPoint;
-    me.redosLeft -= 1;
+    restore(snap);
+    me.redosLeft -= 1;               // the redo is spent regardless of the restored count
     game.redone.push(undoneNumber);
     game.canRedo = false;
     choosingGamble = null;
@@ -509,25 +606,85 @@
     update();
   }
 
-  // Gamble: the racket spin was done for real; this records the result for the
-  // point the gambler just won. Double = the point counts twice, Nothing = not at all.
+  // Undo Point: a plain, unlimited "oops" button for mis-clicks. Steps back
+  // one action at a time (a whole point, or a single gamble spin), with no
+  // buff requirement and no limit, available any time there is history.
+  function undoLastAction() {
+    if (!game || game.history.length === 0) return;
+    const snap = game.history.pop();
+    const label = snap.type === "gamble"
+      ? "a gamble on Point #" + snap.pointNumber
+      : "Point #" + game.pointNumber;
+    restore(snap);
+    choosingGamble = null;
+
+    log(scoreTag() + " Undid " + label + ".");
+    update();
+  }
+
+  // Gamble: the racket spin was done for real; this records one spin's result
+  // for the point the gambler just won. Double doubles what THIS spin was
+  // riding on (so a second Double compounds: +gain, then +2*gain, etc.) and can
+  // be spun again up to the per-point max. Nothing wipes out everything this
+  // point has won so far and ends gambling on this point (nothing left to bet).
   function recordGamble(i, result) {
     if (!game || !canGamble(i)) return;
     const me = game.players[i];
     const lp = game.lastPoint;
 
-    if (result === "double") me.score += lp.gain;
-    else me.score -= lp.gain;
-    lp.gambled = true;
-    me.gamblesLeft -= 1;
+    game.history.push(snapshot("gamble"));
+
+    if (result === "double") {
+      me.score += lp.gain;
+      lp.gain *= 2;
+    } else {
+      me.score -= lp.gain;
+      lp.gain = 0;
+      lp.pointOver = true;
+    }
+    me.gamblesUsedThisPoint += 1;
     choosingGamble = null;
 
+    const left = me.buff.maxGamblesPerPoint - me.gamblesUsedThisPoint;
     log(scoreTag() + " " + names[i] + " gambled on Point #" + game.pointNumber + ": " +
-        (result === "double" ? "Double" : "Nothing") + " (" + me.gamblesLeft + " left)");
+        (result === "double" ? "Double" : "Nothing") + " (" + left + " left this point)");
     update();
   }
 
   // ---- New game setup (names + "are you sure") ----------------------------------
+
+  // Fill the four dropdowns once: "Random" first, then every buff/nerf name.
+  function fillSelect(id, list) {
+    const sel = $(id);
+    sel.innerHTML = "";
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "Random";
+    sel.appendChild(opt);
+    list.forEach(item => {
+      const o = document.createElement("option");
+      o.value = item.name;
+      o.textContent = item.name;
+      sel.appendChild(o);
+    });
+  }
+  fillSelect("pick-buff-0", BUFFS);
+  fillSelect("pick-nerf-0", NERFS);
+  fillSelect("pick-buff-1", BUFFS);
+  fillSelect("pick-nerf-1", NERFS);
+
+  function openChoosePanel() {
+    $("choose-panel").style.display = "block";
+  }
+
+  function closeChoosePanel() {
+    $("choose-panel").style.display = "none";
+  }
+
+  function toggleChoosePanel() {
+    if ($("choose-panel").style.display === "block") closeChoosePanel();
+    else openChoosePanel();
+  }
 
   function openSetup() {
     $("setup-warning").style.display = game ? "block" : "none";
@@ -535,6 +692,9 @@
       $("name-0").value = names[0];
       $("name-1").value = names[1];
     }
+    // Every New Game starts back on "Random" for all four dropdowns, panel closed.
+    ["pick-buff-0", "pick-nerf-0", "pick-buff-1", "pick-nerf-1"].forEach(id => { $(id).value = ""; });
+    closeChoosePanel();
     $("setup").style.display = "block";
     $("new-game").style.display = "none";
     $("name-0").focus();
@@ -547,13 +707,19 @@
 
   function startGame() {
     names = [0, 1].map(i => $("name-" + i).value.trim() || ("Player " + (i + 1)));
+    const choices = [0, 1].map(i => ({
+      buff: $("pick-buff-" + i).value || null,
+      nerf: $("pick-nerf-" + i).value || null
+    }));
     closeSetup();
-    newGame();
+    newGame(choices);
   }
 
   // ---- Wiring ------------------------------------------------------------------------
 
+  $("choose-toggle").addEventListener("click", toggleChoosePanel);
   $("new-game").addEventListener("click", openSetup);
+  $("undo-point").addEventListener("click", undoLastAction);
   $("setup-start").addEventListener("click", startGame);
   $("setup-cancel").addEventListener("click", closeSetup);
   ["name-0", "name-1"].forEach(id => {
