@@ -116,18 +116,27 @@
     width: 100%;
     margin-top: 10px;
   }
-  #win-0 {
+  .ace-btn {
+    display: none;
+  }
+  #win-0, #ace-0 {
     border: 2px solid #ff0000;
   }
-  #win-1 {
+  #win-1, #ace-1 {
     border: 2px solid #0000ff;
   }
   #top-buttons {
+    position: relative;
     text-align: center;
   }
   #top-buttons button {
     margin: 0 4px;
     border: 2px solid #000000;
+  }
+  #save-game {
+    position: absolute;
+    right: 0;
+    top: 0;
   }
   #setup {
     display: none;
@@ -192,6 +201,45 @@
   #pick-buff-1, #pick-nerf-1 {
     border: 2px solid #0000ff;
   }
+  #load-toggle {
+    display: block;
+    margin: 8px auto 0 auto;
+    border: 2px solid #000000;
+    font-size: 14px;
+    padding: 4px 8px;
+  }
+  #load-panel {
+    display: none;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #000000;
+  }
+  #load-panel p {
+    margin: 0 0 6px 0;
+  }
+  #load-code {
+    width: 100%;
+    height: 70px;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 13px;
+    padding: 6px;
+    box-sizing: border-box;
+    resize: vertical;
+  }
+  #load-buttons {
+    text-align: center;
+    margin-top: 8px;
+  }
+  #load-buttons button {
+    border: 2px solid #000000;
+  }
+  #load-error {
+    text-align: center;
+    font-size: 13px;
+    color: #ff0000;
+    min-height: 16px;
+    margin-top: 6px;
+  }
   #setup-buttons {
     text-align: center;
     margin-top: 12px;
@@ -216,6 +264,56 @@
     margin: 8px 0 0 0;
     min-height: 34px;
   }
+  #save-screen {
+    display: none;
+    border: 2px solid #000000;
+    padding: 16px;
+    margin: 16px auto 0 auto;
+    max-width: 500px;
+  }
+  #save-screen p {
+    margin: 0 0 8px 0;
+  }
+  #save-code {
+    width: 100%;
+    height: 90px;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 13px;
+    padding: 6px;
+    box-sizing: border-box;
+    resize: vertical;
+  }
+  #save-buttons {
+    text-align: center;
+    margin-top: 10px;
+  }
+  #save-buttons button {
+    border: 2px solid #000000;
+    margin: 0 4px;
+  }
+  #save-copy-msg {
+    text-align: center;
+    font-size: 13px;
+    min-height: 16px;
+    margin-top: 6px;
+  }
+  #pushups-screen {
+    display: none;
+    text-align: center;
+    border: 2px solid #000000;
+    padding: 16px;
+    margin: 16px auto 0 auto;
+    max-width: 400px;
+  }
+  #pushups-text {
+    font-size: 22px;
+    font-weight: bold;
+    margin: 0 0 12px 0;
+  }
+  #pushups-done {
+    border: 2px solid #000000;
+    font-size: 16px;
+  }
   #log-panel {
     border: 2px solid #000000;
     padding: 12px;
@@ -236,7 +334,8 @@
 
 <div id="top-buttons">
   <button id="new-game">New Game</button>
-  <button id="undo-point" disabled>Undo Point</button>
+  <button id="undo-point" disabled style="display: none;">Undo Point</button>
+  <button id="save-game" style="display: none;">Save Game</button>
 </div>
 
 <div id="setup">
@@ -274,11 +373,36 @@
       <select id="pick-nerf-1"></select>
     </div>
   </div>
+
+  <button id="load-toggle" type="button">Load Saved Game</button>
+  <div id="load-panel">
+    <p>Paste a save code:</p>
+    <textarea id="load-code" placeholder="Paste save code here"></textarea>
+    <div id="load-buttons">
+      <button id="load-start">Load Game</button>
+    </div>
+    <div id="load-error"></div>
+  </div>
 </div>
 
 <div id="game-area">
   <div id="goal">Game to 11</div>
   <div id="winner"></div>
+
+  <div id="pushups-screen">
+    <p id="pushups-text"></p>
+    <button id="pushups-done">Done</button>
+  </div>
+
+  <div id="save-screen">
+    <p>Copy this code to save your game:</p>
+    <textarea id="save-code" readonly></textarea>
+    <div id="save-buttons">
+      <button id="save-copy">Copy</button>
+      <button id="save-close">Close</button>
+    </div>
+    <div id="save-copy-msg"></div>
+  </div>
 
   <div class="players">
     <div class="panel" id="panel-0">
@@ -290,6 +414,7 @@
         <div class="panel-actions">
           <button class="action-btn" id="redo-0">Do Redo</button>
           <button class="action-btn" id="gamble-0">Gamble</button>
+          <button class="action-btn" id="slice-0">Score Slicer</button>
         </div>
       </div>
       <div class="gamble-choice" id="choice-0">
@@ -303,6 +428,7 @@
       <div><span class="label">Buff:</span> <span id="buff-0">-</span></div>
       <div><span class="label">Nerf:</span> <span id="nerf-0">-</span></div>
       <button class="win-btn" id="win-0">Player 1 Wins Point</button>
+      <button class="win-btn ace-btn" id="ace-0">Player 1 Aces (x3)</button>
     </div>
 
     <div class="panel" id="panel-1">
@@ -314,6 +440,7 @@
         <div class="panel-actions">
           <button class="action-btn" id="redo-1">Do Redo</button>
           <button class="action-btn" id="gamble-1">Gamble</button>
+          <button class="action-btn" id="slice-1">Score Slicer</button>
         </div>
       </div>
       <div class="gamble-choice" id="choice-1">
@@ -327,6 +454,7 @@
       <div><span class="label">Buff:</span> <span id="buff-1">-</span></div>
       <div><span class="label">Nerf:</span> <span id="nerf-1">-</span></div>
       <button class="win-btn" id="win-1">Player 2 Wins Point</button>
+      <button class="win-btn ace-btn" id="ace-1">Player 2 Aces (x3)</button>
     </div>
   </div>
 
@@ -340,7 +468,7 @@
   const $ = id => document.getElementById(id);
 
   const BASE_TARGET = 11;      // "Game to 11"
-  const FIB = [0, 1, 1, 2, 3, 5]; // Fibonacci Streak: 0,1,1,2,3,5, then stays at 5
+  const FIB = [1, 1, 2]; // Fibonacci Streak: 1, 1, 2, then stays at 2
 
   let game = null;
   let names = ["Player 1", "Player 2"];
@@ -353,21 +481,37 @@
     return game.players[i].nerf.target || BASE_TARGET;
   }
 
-  // Won = reached their target AND ahead by at least 2.
+  // Whether a player is themselves within one point of their own target right
+  // now (i.e. winning their very next point would reach it). Used to decide
+  // whether a "deuce" (win-by-two) is actually in play.
+  function isNearOwnTarget(i) {
+    const p = game.players[i];
+    return p.score >= targetOf(i) - 1;
+  }
+
+  // Won = reached their target, AND it's a genuine win: either they're ahead
+  // by 2+, or the opponent isn't close enough to their own (possibly
+  // different) target for a deuce to be meaningful. Win-by-two only matters
+  // when BOTH players are near their own target at the same time.
   function hasWon(i) {
     const me = game.players[i], opp = game.players[1 - i];
-    return me.score >= targetOf(i) && me.score - opp.score >= 2;
+    if (me.score < targetOf(i)) return false;
+    if (me.score - opp.score >= 2) return true;
+    return !isNearOwnTarget(1 - i);
   }
 
   // Game point = if this player won the next point (at its real value, whatever
-  // that point is worth for them) it would both reach their target AND put them
-  // ahead by at least 2. Simulates the streak the way winPoint() actually builds
-  // it: incremented BEFORE the value is computed.
+  // that point is worth for them) it would win them the game under the same
+  // rule as hasWon. Simulates the streak the way winPoint() actually builds it:
+  // incremented BEFORE the value is computed.
   function hasGamePoint(i) {
     const me = game.players[i], opp = game.players[1 - i];
     const simMe = Object.assign({}, me, { streak: me.streak + 1 });
     const gain = me.buff.value ? me.buff.value(simMe, opp, 1 - i) : 1;
-    return me.score + gain >= targetOf(i) && me.score + gain - opp.score >= 2;
+    const newScore = me.score + gain;
+    if (newScore < targetOf(i)) return false;
+    if (newScore - opp.score >= 2) return true;
+    return !isNearOwnTarget(1 - i);
   }
 
   // ---- Buffs and nerfs (names are all that is shown in the UI) -----------
@@ -380,20 +524,21 @@
     { name: "Lifesteal",        afterWin: (me, opp) => { opp.score -= 1; } },  // can go negative
     { name: "Double Points",    value: () => 2 },
     { name: "Fibonacci Streak", value: (me) => FIB[Math.min(me.streak - 1, FIB.length - 1)] },
-    { name: "5 Redos",          redos: 5 },
     { name: "Gambler",          gambles: true, maxGamblesPerPoint: 3 },
     { name: "Double Bounce" },
-    { name: "Last Chance",      value: (me, opp, oppIndex) => hasGamePoint(oppIndex) ? 3 : 1 }
+    { name: "Last Chance",      value: (me, opp, oppIndex) => hasGamePoint(oppIndex) ? 3 : 1 },
+    { name: "Triple Ace",       hasAce: true, aceValue: 3 },
+    { name: "Score Slicer",     hasSlice: true }
   ];
 
   const NERFS = [
-    { name: "Other Hand Grip" },
     { name: "Shortgrip" },
     { name: "Win at 15", target: 15 },
     { name: "Never Serve" },
     { name: "Deep" },
     { name: "Above the red line" },
-    { name: "Down and in" }
+    { name: "Down and in" },
+    { name: "Push Ups", pushUps: true }
   ];
 
   function pick(list) {
@@ -402,12 +547,26 @@
 
   // ---- Log -----------------------------------------------------------------
 
-  // Newest line is inserted at the top.
+  // Newest line is inserted at the top. Also recorded in game.logLines
+  // (same newest-first order) so the log can be saved and reloaded.
   function log(msg) {
     const p = document.createElement("p");
     p.textContent = msg;
     const el = $("log");
     el.insertBefore(p, el.firstChild);
+    if (game) game.logLines.unshift(msg);
+  }
+
+  // Rebuilds the on-screen log from game.logLines (newest-first) without
+  // re-triggering any game logic. Used when loading a save.
+  function renderLog() {
+    const el = $("log");
+    el.innerHTML = "";
+    game.logLines.forEach(msg => {
+      const p = document.createElement("p");
+      p.textContent = msg;
+      el.appendChild(p);
+    });
   }
 
   function scoreTag() {
@@ -428,6 +587,7 @@
   // Gambler: up to 3 spins on the point they just won (a Double can be gambled
   // again; a Nothing ends that point's chances). Resets to 0 uses on each new point.
   function canGamble(i) {
+    if (pushupsPending()) return false;
     const me = game.players[i];
     const lp = game.lastPoint;
     return !!(me.buff.gambles && lp && lp.winner === i && !lp.pointOver &&
@@ -437,6 +597,7 @@
   // Redo rules: only for the 3 Redos owner, only while the game is still going,
   // only right after a point is played (no chaining), and only once per point.
   function canRedo(i) {
+    if (pushupsPending()) return false;
     const me = game.players[i];
     const top = game.history[game.history.length - 1];
     return !!(me.buff.redos && me.redosLeft > 0 && !game.over &&
@@ -444,9 +605,39 @@
               game.redone.indexOf(game.pointNumber) === -1);
   }
 
+  // True while a pushups entry is waiting on its Done click. Point-scoring
+  // actions are blocked until it's acknowledged, so the queue can't silently
+  // build up behind the game.
+  function pushupsPending() {
+    return !!(game && game.pushupsQueue.length > 0);
+  }
+
+  function renderPushups() {
+    const pending = pushupsPending();
+    $("pushups-screen").style.display = pending ? "block" : "none";
+    if (pending) {
+      const entry = game.pushupsQueue[0];
+      $("pushups-text").textContent =
+        names[entry.doer] + " owes " + entry.count + " push-up" + (entry.count === 1 ? "" : "s") +
+        " (Point #" + entry.pointNumber + ").";
+    }
+  }
+
+  function donePushups() {
+    if (!pushupsPending()) return;
+    const entry = game.pushupsQueue.shift();
+    log(scoreTag() + " " + names[entry.doer] + " did " + entry.count + " push-up" +
+        (entry.count === 1 ? "" : "s") + " (Point #" + entry.pointNumber + ").");
+    update();
+  }
+
   function render() {
+    $("undo-point").style.display = game ? "inline-block" : "none";
     $("undo-point").disabled = !game || game.history.length === 0;
+    $("save-game").style.display = game ? "inline-block" : "none";
     $("goal").textContent = goalText();
+    renderPushups();
+    const blocked = pushupsPending();
     for (let i = 0; i < 2; i++) {
       const p = game.players[i];
       $("name-display-" + i).textContent = names[i];
@@ -456,20 +647,30 @@
       $("buff-" + i).textContent = p.buff.name;
       $("nerf-" + i).textContent = p.nerf.name;
       $("win-" + i).textContent = names[i] + " Wins Point";
-      $("win-" + i).disabled = game.over;
+      $("win-" + i).disabled = game.over || blocked;
+
+      const ace = $("ace-" + i);
+      ace.style.display = p.buff.hasAce ? "block" : "none";
+      ace.textContent = names[i] + " Aces (x" + p.buff.aceValue + ")";
+      ace.disabled = game.over || blocked;
 
       const redo = $("redo-" + i);
       redo.style.display = p.buff.redos ? "inline-block" : "none";
       redo.textContent = "Do Redo (" + p.redosLeft + " left)";
-      redo.disabled = !canRedo(i);
+      redo.disabled = !canRedo(i) || blocked;
 
       const gamble = $("gamble-" + i);
       gamble.style.display = p.buff.gambles ? "inline-block" : "none";
       gamble.textContent = "Gamble (" + (p.buff.maxGamblesPerPoint - p.gamblesUsedThisPoint) + " left this point)";
-      gamble.disabled = !canGamble(i);
+      gamble.disabled = !canGamble(i) || blocked;
 
       $("choice-" + i).style.display =
-        (choosingGamble === i && canGamble(i)) ? "block" : "none";
+        (choosingGamble === i && canGamble(i) && !blocked) ? "block" : "none";
+
+      const slice = $("slice-" + i);
+      slice.style.display = p.buff.hasSlice ? "inline-block" : "none";
+      slice.textContent = p.scoreSlicerUsed ? "Score Slicer (used)" : "Score Slicer";
+      slice.disabled = !canSlice(i) || blocked;
     }
     $("winner").textContent = game.over ? names[game.winner] + " wins the game!" : "";
   }
@@ -504,6 +705,8 @@
       lastPoint: null,  // { winner, gain, pointOver } - used by Gamble
       canRedo: false,   // Do Redo only works right after a point is played (no chaining)
       redone: [],       // point numbers that already used their buff redo
+      pushupsQueue: [], // { doer, count, pointNumber } entries waiting on a Done click
+      logLines: [],     // mirrors the on-screen log, newest first; used by Save Game
       players: [0, 1].map((_, i) => {
         const chosen = choices && choices[i] ? choices[i] : {};
         const buff = (chosen.buff && byName(BUFFS, chosen.buff)) || pick(BUFFS);
@@ -514,7 +717,8 @@
           buff: buff,
           nerf: nerf,
           redosLeft: buff.redos || 0,
-          gamblesUsedThisPoint: 0
+          gamblesUsedThisPoint: 0,
+          scoreSlicerUsed: false
         };
       })
     };
@@ -539,13 +743,24 @@
         score: p.score,
         streak: p.streak,
         gamblesUsedThisPoint: p.gamblesUsedThisPoint,
-        redosLeft: p.redosLeft
+        redosLeft: p.redosLeft,
+        scoreSlicerUsed: p.scoreSlicerUsed
       })),
       pointNumber: game.pointNumber,
       lastPoint: game.lastPoint ? Object.assign({}, game.lastPoint) : null,
       canRedo: game.canRedo,
-      redone: game.redone.slice()
+      redone: game.redone.slice(),
+      pushupsQueue: game.pushupsQueue.map(e => Object.assign({}, e)),
+      logLength: game.logLines.length // log lines are trimmed back to this on undo
     };
+  }
+
+  // Removes everything logged since the snapshot was taken, so an undone
+  // action leaves no trace in the log instead of adding an "Undid ..." line.
+  function trimLogTo(length) {
+    game.logLines.length = length;
+    const el = $("log");
+    while (el.children.length > length) el.removeChild(el.firstChild);
   }
 
   function restore(snap) {
@@ -554,15 +769,18 @@
       game.players[k].streak = s.streak;
       game.players[k].gamblesUsedThisPoint = s.gamblesUsedThisPoint;
       game.players[k].redosLeft = s.redosLeft;
+      game.players[k].scoreSlicerUsed = s.scoreSlicerUsed;
     });
     game.pointNumber = snap.pointNumber;
     game.lastPoint = snap.lastPoint;
     game.canRedo = snap.canRedo;
     game.redone = snap.redone;
+    game.pushupsQueue = snap.pushupsQueue;
   }
 
-  function winPoint(i) {
-    if (!game || game.over) return;
+  function winPoint(i, isAce) {
+    if (!game || game.over || pushupsPending()) return;
+    if (isAce && !game.players[i].buff.hasAce) return;
     const j = 1 - i;
     const me = game.players[i];
     const opp = game.players[j];
@@ -574,15 +792,29 @@
     opp.streak = 0;
     me.gamblesUsedThisPoint = 0;
 
-    const gain = me.buff.value ? me.buff.value(me, opp, j) : 1;
+    // An ace always scores the buff's fixed value (Triple Ace: 3), overriding
+    // any other per-point value modifier, since it's a different kind of point.
+    const gain = isAce ? me.buff.aceValue : (me.buff.value ? me.buff.value(me, opp, j) : 1);
     me.score += gain;
     if (me.buff.afterWin) me.buff.afterWin(me, opp);
+
+    // Push Ups: every point the nerfed player wins, pushups are based on
+    // their score after this point. A negative score hands the pushups to
+    // the opponent instead (same magnitude, since a negative count makes no
+    // sense).
+    if (me.nerf.pushUps) {
+      const count = Math.ceil(Math.abs(me.score) / 2);
+      if (count > 0) {
+        const doer = me.score >= 0 ? i : j;
+        game.pushupsQueue.push({ doer: doer, count: count, pointNumber: game.pointNumber + 1 });
+      }
+    }
 
     game.pointNumber += 1;
     game.lastPoint = { winner: i, gain: gain, pointOver: false };
     game.canRedo = true;
 
-    log(scoreTag() + " Point #" + game.pointNumber + " won by " + names[i]);
+    log(scoreTag() + " Point #" + game.pointNumber + " won by " + names[i] + (isAce ? " (Ace)" : ""));
     update();
   }
 
@@ -608,17 +840,15 @@
 
   // Undo Point: a plain, unlimited "oops" button for mis-clicks. Steps back
   // one action at a time (a whole point, or a single gamble spin), with no
-  // buff requirement and no limit, available any time there is history.
+  // buff requirement and no limit, available any time there is history. The
+  // undone action's own log line is removed rather than adding a new "Undid
+  // ..." line, so the log reads as if it never happened.
   function undoLastAction() {
     if (!game || game.history.length === 0) return;
     const snap = game.history.pop();
-    const label = snap.type === "gamble"
-      ? "a gamble on Point #" + snap.pointNumber
-      : "Point #" + game.pointNumber;
     restore(snap);
+    trimLogTo(snap.logLength);
     choosingGamble = null;
-
-    log(scoreTag() + " Undid " + label + ".");
     update();
   }
 
@@ -649,6 +879,148 @@
     log(scoreTag() + " " + names[i] + " gambled on Point #" + game.pointNumber + ": " +
         (result === "double" ? "Double" : "Nothing") + " (" + left + " left this point)");
     update();
+  }
+
+  // Cuts a score toward zero by the given fraction, rounding the amount cut
+  // UP. E.g. 10 at 25% -> 10-ceil(2.5) = 7. A score of 0 is left at 0.
+  function cutToward(score, fraction) {
+    if (score === 0) return 0;
+    const cut = Math.ceil(Math.abs(score) * fraction);
+    return score > 0 ? Math.max(0, score - cut) : score + cut;
+  }
+
+  function canSlice(i) {
+    if (!game || game.over || pushupsPending()) return false;
+    const me = game.players[i];
+    return !!(me.buff.hasSlice && !me.scoreSlicerUsed);
+  }
+
+  // Score Slicer: one-time use per game. Lowers the user's own score by 25%
+  // and the opponent's by 50%, both rounded up, available any time (not tied
+  // to winning a point).
+  function useScoreSlicer(i) {
+    if (!canSlice(i)) return;
+    const j = 1 - i;
+    const me = game.players[i];
+    const opp = game.players[j];
+
+    game.history.push(snapshot("slice"));
+
+    const before = [me.score, opp.score];
+    me.score = cutToward(me.score, 0.25);
+    opp.score = cutToward(opp.score, 0.5);
+    me.scoreSlicerUsed = true;
+    choosingGamble = null;
+
+    log(scoreTag() + " " + names[i] + " used Score Slicer: " +
+        names[i] + " " + before[0] + "\u2192" + me.score + ", " +
+        names[j] + " " + before[1] + "\u2192" + opp.score + ".");
+    update();
+  }
+
+  // ---- Save / Load ---------------------------------------------------------------
+  //
+  // The save code is just the game's state as JSON, then base64-encoded so it
+  // reads as one opaque block of text rather than raw, editable JSON. Buffs and
+  // nerfs are saved by name and looked back up on load, so the code stays valid
+  // even if this file's internal buff/nerf order ever changes. The Undo
+  // Point / Do Redo history isn't saved — a loaded game starts as a fresh
+  // checkpoint with nothing further back to undo into.
+
+  function buildSaveCode() {
+    const payload = {
+      v: 1,
+      names: names,
+      pointNumber: game.pointNumber,
+      over: game.over,
+      winner: game.winner,
+      lastPoint: game.lastPoint,
+      pushupsQueue: game.pushupsQueue,
+      logLines: game.logLines,
+      players: game.players.map(p => ({
+        score: p.score,
+        streak: p.streak,
+        buff: p.buff.name,
+        nerf: p.nerf.name,
+        redosLeft: p.redosLeft,
+        gamblesUsedThisPoint: p.gamblesUsedThisPoint,
+        scoreSlicerUsed: p.scoreSlicerUsed
+      }))
+    };
+    return btoa(encodeURIComponent(JSON.stringify(payload)));
+  }
+
+  // Rebuilds `game` and `names` from a save code. Returns an error message
+  // string on failure, or null on success.
+  function loadFromCode(code) {
+    let payload;
+    try {
+      payload = JSON.parse(decodeURIComponent(atob(code.trim())));
+    } catch (e) {
+      return "That doesn't look like a valid save code.";
+    }
+    if (!payload || !Array.isArray(payload.players) || payload.players.length !== 2 || !Array.isArray(payload.names)) {
+      return "That doesn't look like a valid save code.";
+    }
+    const rebuiltPlayers = [];
+    for (let i = 0; i < 2; i++) {
+      const sp = payload.players[i];
+      const buff = byName(BUFFS, sp.buff);
+      const nerf = byName(NERFS, sp.nerf);
+      if (!sp || !buff || !nerf) return "That save code references a buff or nerf that no longer exists.";
+      rebuiltPlayers.push({
+        score: sp.score,
+        streak: sp.streak,
+        buff: buff,
+        nerf: nerf,
+        redosLeft: sp.redosLeft || 0,
+        gamblesUsedThisPoint: sp.gamblesUsedThisPoint || 0,
+        scoreSlicerUsed: !!sp.scoreSlicerUsed
+      });
+    }
+
+    names = [payload.names[0] || "Player 1", payload.names[1] || "Player 2"];
+    game = {
+      pointNumber: payload.pointNumber || 0,
+      over: false,
+      winner: null,
+      history: [],
+      lastPoint: payload.lastPoint || null,
+      canRedo: false,
+      redone: [],
+      pushupsQueue: Array.isArray(payload.pushupsQueue) ? payload.pushupsQueue : [],
+      logLines: Array.isArray(payload.logLines) ? payload.logLines : [],
+      players: rebuiltPlayers
+    };
+    choosingGamble = null;
+    return null;
+  }
+
+  function openSaveScreen() {
+    if (!game) return;
+    $("save-code").value = buildSaveCode();
+    $("save-copy-msg").textContent = "";
+    $("save-screen").style.display = "block";
+    $("save-code").focus();
+    $("save-code").select();
+  }
+
+  function closeSaveScreen() {
+    $("save-screen").style.display = "none";
+  }
+
+  async function copySaveCode() {
+    const text = $("save-code").value;
+    $("save-code").focus();
+    $("save-code").select();
+    try {
+      await navigator.clipboard.writeText(text);
+      $("save-copy-msg").textContent = "Copied.";
+    } catch (e) {
+      // Clipboard API may be unavailable (e.g. no permission); the text is
+      // already selected, so the person can still copy it with Ctrl/Cmd+C.
+      $("save-copy-msg").textContent = "Couldn't copy automatically \u2014 the code is selected, so you can copy it with Ctrl/Cmd+C.";
+    }
   }
 
   // ---- New game setup (names + "are you sure") ----------------------------------
@@ -686,6 +1058,21 @@
     else openChoosePanel();
   }
 
+  function openLoadPanel() {
+    $("load-panel").style.display = "block";
+  }
+
+  function closeLoadPanel() {
+    $("load-panel").style.display = "none";
+    $("load-code").value = "";
+    $("load-error").textContent = "";
+  }
+
+  function toggleLoadPanel() {
+    if ($("load-panel").style.display === "block") closeLoadPanel();
+    else openLoadPanel();
+  }
+
   function openSetup() {
     $("setup-warning").style.display = game ? "block" : "none";
     if (game) {
@@ -695,6 +1082,7 @@
     // Every New Game starts back on "Random" for all four dropdowns, panel closed.
     ["pick-buff-0", "pick-nerf-0", "pick-buff-1", "pick-nerf-1"].forEach(id => { $(id).value = ""; });
     closeChoosePanel();
+    closeLoadPanel();
     $("setup").style.display = "block";
     $("new-game").style.display = "none";
     $("name-0").focus();
@@ -715,11 +1103,35 @@
     newGame(choices);
   }
 
+  // Loads a saved game from the pasted code, replacing any game in progress.
+  function loadGame() {
+    const code = $("load-code").value;
+    if (!code.trim()) {
+      $("load-error").textContent = "Paste a save code first.";
+      return;
+    }
+    const err = loadFromCode(code);
+    if (err) {
+      $("load-error").textContent = err;
+      return;
+    }
+    closeSetup();
+    $("game-area").style.display = "block";
+    renderLog();
+    update();
+  }
+
   // ---- Wiring ------------------------------------------------------------------------
 
   $("choose-toggle").addEventListener("click", toggleChoosePanel);
+  $("load-toggle").addEventListener("click", toggleLoadPanel);
+  $("load-start").addEventListener("click", loadGame);
   $("new-game").addEventListener("click", openSetup);
   $("undo-point").addEventListener("click", undoLastAction);
+  $("pushups-done").addEventListener("click", donePushups);
+  $("save-game").addEventListener("click", openSaveScreen);
+  $("save-copy").addEventListener("click", copySaveCode);
+  $("save-close").addEventListener("click", closeSaveScreen);
   $("setup-start").addEventListener("click", startGame);
   $("setup-cancel").addEventListener("click", closeSetup);
   ["name-0", "name-1"].forEach(id => {
@@ -730,6 +1142,7 @@
 
   for (let i = 0; i < 2; i++) {
     $("win-" + i).addEventListener("click", () => winPoint(i));
+    $("ace-" + i).addEventListener("click", () => winPoint(i, true));
     $("redo-" + i).addEventListener("click", () => doRedo(i));
     $("gamble-" + i).addEventListener("click", () => {
       if (canGamble(i)) { choosingGamble = i; render(); }
@@ -737,6 +1150,7 @@
     $("double-" + i).addEventListener("click", () => recordGamble(i, "double"));
     $("nothing-" + i).addEventListener("click", () => recordGamble(i, "nothing"));
     $("cancel-" + i).addEventListener("click", () => { choosingGamble = null; render(); });
+    $("slice-" + i).addEventListener("click", () => useScoreSlicer(i));
   }
 
   // Nothing but the title and New Game button shows until New Game is clicked.
