@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret?</title>
+</head>
+<body>
+    <p>
+        You found a secret! 
+        <a href="https://arviture.com/no.mp4" target="_blank" id="secretLink">Click here!</a>
+    </p>
+
+    <p id="errorMsg" style="display: none;">Naw, just kidding. This page doesn't exist. Error code 404.</p>
+
+    <script>
+        // Listen for clicks on the secret link to reveal the 404 text
+        document.getElementById('secretLink').addEventListener('click', function() {
+            document.getElementById('errorMsg').style.display = 'block';
+        });
+    </script>
+</body>
+</html>
