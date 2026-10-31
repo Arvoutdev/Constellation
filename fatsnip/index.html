@@ -2,37 +2,61 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Replay Snipper</title>
+<title>Replay Tool</title>
 </head>
 <body>
 
-<h3>Replay Snipper</h3>
+<h3>Replay Tool</h3>
+
+<p>
+Mode:
+<select id="mode">
+  <option value="snip">Snip</option>
+  <option value="convert">Convert to new</option>
+</select>
+</p>
 
 <p>Replay text:<br>
 <textarea id="input" rows="8" cols="80"></textarea></p>
 
-<p id="info">No replay loaded. (Note: Snipping replays WILL break platforms.)</p>
+<p id="info">No replay loaded.</p>
 
+<div id="snipFields">
 <p>
 Start time (s): <input type="text" id="start" value="0" size="10"><br>
 End time (s): <input type="text" id="end" value="" size="10">
 </p>
+</div>
 
-<p><button id="snipBtn">Snip</button></p>
+<div id="convertFields" style="display:none">
+<p>
+Finishing time (s): <input type="text" id="finish" value="" size="10">
+</p>
+</div>
+
+<p><button id="goBtn">Snip</button></p>
 
 <p id="status"></p>
 
-<p>Snipped replay:<br>
+<p>Result:<br>
 <textarea id="output" rows="8" cols="80" readonly></textarea><br>
 <button id="copyBtn">Copy</button></p>
 
 <script>
 var SPP = 0.1;
+var CS_PER_POINT = 10;
+var MARKER = ".";
+var STARTED_MOVING = 4;
 
+var modeEl = document.getElementById("mode");
 var inputEl = document.getElementById("input");
 var infoEl = document.getElementById("info");
 var startEl = document.getElementById("start");
 var endEl = document.getElementById("end");
+var finishEl = document.getElementById("finish");
+var snipFieldsEl = document.getElementById("snipFields");
+var convertFieldsEl = document.getElementById("convertFields");
+var goBtn = document.getElementById("goBtn");
 var statusEl = document.getElementById("status");
 var outputEl = document.getElementById("output");
 
@@ -47,16 +71,24 @@ function readVarint(bytes, pos) {
     if ((c & 0x80) === 0) break;
     shift += 7;
   }
+  return u;
+}
+
+function unzig(u) {
   return ((u >>> 1) ^ -(u & 1)) | 0;
 }
 
-function writeVarint(out, v) {
-  var u = ((v << 1) ^ (v >> 31)) >>> 0;
+function writeU(out, u) {
+  u = u >>> 0;
   while (u >= 0x80) {
     out.push((u & 0x7f) | 0x80);
     u >>>= 7;
   }
   out.push(u);
+}
+
+function writeVarint(out, v) {
+  writeU(out, ((v << 1) ^ (v >> 31)) >>> 0);
 }
 
 function decode(text) {
@@ -65,6 +97,9 @@ function decode(text) {
 
   var level = s.charAt(0);
   s = s.slice(1);
+
+  var hasEvents = s.charAt(0) === MARKER;
+  if (hasEvents) s = s.slice(1);
   if (s.length === 0) throw new Error("replay has no data after the level id");
 
   while (s.length % 4 !== 0) s += "=";
@@ -80,19 +115,43 @@ function decode(text) {
   for (var k = 0; k < bin.length; k++) bytes.push(bin.charCodeAt(k));
 
   var pos = { i: 0 };
+  var events = [];
+
+  if (hasEvents) {
+    var count = readVarint(bytes, pos);
+    if (count > bytes.length) throw new Error("replay is corrupted");
+    var t = 0;
+    for (var n = 0; n < count; n++) {
+      if (pos.i >= bytes.length) throw new Error("replay is cut off");
+      var id = bytes[pos.i++];
+      t += unzig(readVarint(bytes, pos));
+      events.push({ id: id, cs: t });
+    }
+    events.sort(function (a, b) { return a.cs - b.cs; });
+  }
+
   var x = 0, y = 0, z = 0;
   var pts = [];
   while (pos.i < bytes.length) {
-    x += readVarint(bytes, pos);
-    y += readVarint(bytes, pos);
-    z += readVarint(bytes, pos);
+    x += unzig(readVarint(bytes, pos));
+    y += unzig(readVarint(bytes, pos));
+    z += unzig(readVarint(bytes, pos));
     pts.push([x, y, z]);
   }
-  return { level: level, pts: pts };
+  return { level: level, events: events, pts: pts, hadEvents: hasEvents };
 }
 
-function encode(level, pts) {
+function encode(level, events, pts) {
   var out = [];
+
+  writeU(out, events.length);
+  var prev = 0;
+  for (var e = 0; e < events.length; e++) {
+    out.push(events[e].id & 0xff);
+    writeVarint(out, events[e].cs - prev);
+    prev = events[e].cs;
+  }
+
   var px = 0, py = 0, pz = 0;
   for (var k = 0; k < pts.length; k++) {
     writeVarint(out, pts[k][0] - px);
@@ -104,11 +163,55 @@ function encode(level, pts) {
   }
   var bin = "";
   for (var m = 0; m < out.length; m++) bin += String.fromCharCode(out[m]);
-  return level + btoa(bin).replace(/=+$/, "");
+  return level + MARKER + btoa(bin).replace(/=+$/, "");
 }
 
 function fmt(n) {
   return (Math.round(n * 100) / 100).toString();
+}
+
+function snipReplay(r, start, end) {
+  var pts = r.pts;
+
+  if (isNaN(start) || isNaN(end)) throw new Error("start and end must be numbers.");
+
+  var i0 = Math.max(0, Math.round(start / SPP));
+  var i1 = Math.min(pts.length - 1, Math.round(end / SPP));
+  if (i1 < i0) throw new Error("end must be after start.");
+
+  var cs0 = i0 * CS_PER_POINT;
+  var cs1 = i1 * CS_PER_POINT;
+  var cut = pts.slice(i0, i1 + 1);
+  var evs = [];
+  for (var k = 0; k < r.events.length; k++) {
+    var e = r.events[k];
+    if (e.cs >= cs0 && e.cs <= cs1) evs.push({ id: e.id, cs: e.cs - cs0 });
+  }
+  return { text: encode(r.level, evs, cut), points: cut.length, events: evs.length, total: pts.length, totalEvents: r.events.length };
+}
+
+function convertReplay(r, finish) {
+  if (isNaN(finish) || finish < 0) throw new Error("finishing time must be a number.");
+  if (r.pts.length < 2) throw new Error("replay needs at least 2 points.");
+
+  var lengthCs = (r.pts.length - 1) * CS_PER_POINT;
+  var startCs = lengthCs - Math.round(finish * 100);
+  var warning = "";
+  if (startCs < 0) {
+    warning = "Finishing time is longer than the replay (" + fmt(lengthCs / 100) + " s), so the event was placed at 0.";
+    startCs = 0;
+  }
+
+  var evs = [];
+  var removed = 0;
+  for (var k = 0; k < r.events.length; k++) {
+    if (r.events[k].id === STARTED_MOVING) removed++;
+    else evs.push({ id: r.events[k].id, cs: r.events[k].cs });
+  }
+  evs.push({ id: STARTED_MOVING, cs: startCs });
+  evs.sort(function (a, b) { return a.cs - b.cs; });
+
+  return { text: encode(r.level, evs, r.pts), startCs: startCs, removed: removed, warning: warning };
 }
 
 function refresh() {
@@ -124,7 +227,8 @@ function refresh() {
   try {
     var r = decode(text);
     var max = (r.pts.length - 1) * SPP;
-    infoEl.textContent = "Level " + r.level + ", " + r.pts.length + " points, max time " + fmt(max) + " s.";
+    infoEl.textContent = "Level " + r.level + ", " + r.pts.length + " points, " + r.events.length +
+      " events, " + (r.hadEvents ? "new" : "old") + " format, length " + fmt(max) + " s.";
     startEl.value = "0";
     endEl.value = fmt(max);
   } catch (e) {
@@ -132,7 +236,16 @@ function refresh() {
   }
 }
 
-function snip() {
+function updateMode() {
+  var convert = modeEl.value === "convert";
+  snipFieldsEl.style.display = convert ? "none" : "block";
+  convertFieldsEl.style.display = convert ? "block" : "none";
+  goBtn.textContent = convert ? "Convert" : "Snip";
+  statusEl.textContent = "";
+  outputEl.value = "";
+}
+
+function go() {
   statusEl.textContent = "";
   outputEl.value = "";
 
@@ -144,37 +257,53 @@ function snip() {
     return;
   }
 
-  var pts = r.pts;
-  var max = (pts.length - 1) * SPP;
+  if (modeEl.value === "convert") {
+    var finishText = finishEl.value.trim();
+    if (finishText === "") {
+      statusEl.textContent = "Error: enter a finishing time.";
+      return;
+    }
 
+    var c;
+    try {
+      c = convertReplay(r, parseFloat(finishText));
+    } catch (e) {
+      statusEl.textContent = "Error: " + e.message;
+      return;
+    }
+
+    outputEl.value = c.text;
+    var msg = "Added started moving event at " + fmt(c.startCs / 100) + " s.";
+    if (c.removed > 0) msg += " Replaced " + c.removed + " existing started moving event(s).";
+    if (c.warning) msg += " Warning: " + c.warning;
+    statusEl.textContent = msg;
+    return;
+  }
+
+  var max = (r.pts.length - 1) * SPP;
   var startText = startEl.value.trim();
   var endText = endEl.value.trim();
   var start = startText === "" ? 0 : parseFloat(startText);
   var end = endText === "" ? max : parseFloat(endText);
 
-  if (isNaN(start) || isNaN(end)) {
-    statusEl.textContent = "Error: start and end must be numbers.";
+  var res;
+  try {
+    res = snipReplay(r, start, end);
+  } catch (e) {
+    statusEl.textContent = "Error: " + e.message;
     return;
   }
 
-  var i0 = Math.max(0, Math.round(start / SPP));
-  var i1 = Math.min(pts.length - 1, Math.round(end / SPP));
-
-  if (i1 < i0) {
-    statusEl.textContent = "Error: end must be after start.";
-    return;
-  }
-
-  var cut = pts.slice(i0, i1 + 1);
-  outputEl.value = encode(r.level, cut);
-
-  var msg = "Kept " + cut.length + " of " + pts.length + " points (" + fmt((cut.length - 1) * SPP) + " s).";
-  if (cut.length < 2) msg += " Warning: a replay needs at least 2 points to play.";
-  statusEl.textContent = msg;
+  outputEl.value = res.text;
+  var msg2 = "Kept " + res.points + " of " + res.total + " points (" + fmt((res.points - 1) * SPP) + " s) and " +
+    res.events + " of " + res.totalEvents + " events.";
+  if (res.points < 2) msg2 += " Warning: a replay needs at least 2 points to play.";
+  statusEl.textContent = msg2;
 }
 
+modeEl.addEventListener("change", updateMode);
 inputEl.addEventListener("input", refresh);
-document.getElementById("snipBtn").addEventListener("click", snip);
+goBtn.addEventListener("click", go);
 document.getElementById("copyBtn").addEventListener("click", function () {
   outputEl.select();
   if (navigator.clipboard) navigator.clipboard.writeText(outputEl.value);
