@@ -33,69 +33,203 @@
             </div>
         </div>
         <script>
-          function mergeFiles(fileParts) {
-              return new Promise((resolve, reject) => {
-                  let buffers = [];
-      
-                  function fetchPart(index) {
-                      if (index >= fileParts.length) {
-                          let mergedBlob = new Blob(buffers);
-                          let mergedFileUrl = URL.createObjectURL(mergedBlob);
-                          resolve(mergedFileUrl);
-                          return;
-                      }
-                      fetch(fileParts[index]).then((response) => response.arrayBuffer()).then((data) => {
-                          buffers.push(data);
-                          fetchPart(index + 1);
-                      }).catch(reject);
-                  }
-                  fetchPart(0);
-              });
-          }
-      
-          function getParts(file, start, end) {
-              let parts = [];
-              for (let i = start; i <= end; i++) {
-                  parts.push(file + ".part" + i);
-              }
-              return parts;
-          }
-      
-          mergeFiles(getParts("game.unx", 1, 13)).then(async url => {
-              window.gameUnxUrl = url;
-      
-              const originalFetch = window.fetch;
-              window.fetch = async function (...args) {
-                  let [url, options] = args;
-                  if (typeof url === 'string' && url.includes("game.unx")) {
-                      console.log("fetch:", url);
-                      url = window.gameUnxUrl;
-                  } else if (url instanceof Request && url.url.includes("game.unx")) {
-                      console.log("fetch request:", url.url);
-                      url = new Request(window.gameUnxUrl, url);
-                  }
-                  return originalFetch.call(this, url, options);
-              };
-      
-              const originalOpen = XMLHttpRequest.prototype.open;
-              XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-                  if (url.includes("game.unx")) {
-                      console.log("XHR:", url);
-                      url = window.gameUnxUrl;
-                  }
-                  return originalOpen.call(this, method, url, ...rest);
-              };
-              let index = document.createElement("script");
-              index.src = "index.js";
-              document.body.appendChild(index);
-      
-              let runner = document.createElement("script");
-              runner.src = "runner.js";
-              document.body.appendChild(runner);
-          }).catch(error => {
-              console.error("Failed to merge files:", error);
-          });
-      </script>      
+        /*
+         * Pizza Tower web loader with Cache Storage.
+         *
+         * Before: every page load re-downloaded all 13 game.unx parts (~254 MB) one at a
+         * time, and the browser's HTTP cache usually could not keep files that large.
+         * Now: each file is stored in the Cache Storage API the first time it is fetched and
+         * served from there on later loads. The game itself is not changed.
+         *
+         *   game.unx.part1..13 -> cached, then merged into one blob URL (as before)
+         *   runner.data        -> cached, handed to the runner via Module.getPreloadedPackage
+         *   runner.wasm        -> cached, served through the fetch() wrapper below
+         *
+         * If Cache Storage is unavailable (private mode, sandboxed iframe, quota), everything
+         * falls back to plain network requests, so the page still works.
+         *
+         * Game updated? Bump CACHE_VERSION. Old caches are deleted automatically.
+         * Manual wipe from the console: ptClearCache()
+         */
+        (function () {
+            const CACHE_PREFIX = "pizza-tower-web-";
+            const CACHE_VERSION = "1";
+            const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
+            const PART_COUNT = 13;
+            const DOWNLOAD_CONCURRENCY = 4;
+
+            const nativeFetch = window.fetch.bind(window);
+            const absUrl = (u) => new URL(u, document.baseURI).href;
+            const statusEl = document.getElementById("status");
+            const progressEl = document.getElementById("progress");
+
+            function showProgress(text, value, max) {
+                if (statusEl) statusEl.textContent = text;
+                if (progressEl && max) {
+                    progressEl.max = max;
+                    progressEl.value = value;
+                    progressEl.hidden = false;
+                }
+            }
+
+            // ---- Cache Storage ---------------------------------------------------
+            let cachePromise = null;
+            function openCache() {
+                if (!cachePromise) {
+                    cachePromise = (async () => {
+                        try {
+                            if (!("caches" in window)) return null;
+                            for (const key of await caches.keys()) {
+                                if (key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME) await caches.delete(key);
+                            }
+                            return await caches.open(CACHE_NAME);
+                        } catch (e) {
+                            console.warn("[cache] Cache Storage unavailable, using network only:", e);
+                            return null;
+                        }
+                    })();
+                }
+                return cachePromise;
+            }
+
+            // Returns a Response for `url`: from cache if present, otherwise downloads it,
+            // stores it, and returns it.
+            async function getResponse(url) {
+                const key = absUrl(url);
+                const cache = await openCache();
+                if (cache) {
+                    try {
+                        const hit = await cache.match(key);
+                        if (hit) { console.log("[cache] hit  ", key); return hit; }
+                    } catch (e) { console.warn("[cache] read failed:", e); }
+                }
+                console.log("[cache] miss ", key);
+                const res = await nativeFetch(key);
+                if (!res.ok) throw new Error("HTTP " + res.status + " for " + key);
+                if (cache) {
+                    try {
+                        await cache.put(key, res.clone());
+                        const stored = await cache.match(key);
+                        if (stored) return stored;
+                    } catch (e) {
+                        console.warn("[cache] could not store " + key + " (quota?):", e);
+                    }
+                }
+                return res;
+            }
+
+            // ---- loaders ---------------------------------------------------------
+            // Downloads (or loads from cache) every game.unx part, a few at a time, then
+            // merges them into one blob URL, which the runner is pointed at below.
+            async function loadGameUnx() {
+                const blobs = new Array(PART_COUNT);
+                let next = 0, done = 0;
+                showProgress("Loading game data... (0/" + PART_COUNT + ")", 0, PART_COUNT);
+                async function worker() {
+                    while (next < PART_COUNT) {
+                        const i = next++;
+                        const res = await getResponse("game.unx.part" + (i + 1));
+                        blobs[i] = await res.blob();
+                        done++;
+                        showProgress("Loading game data... (" + done + "/" + PART_COUNT + ")", done, PART_COUNT);
+                    }
+                }
+                await Promise.all(Array.from({ length: DOWNLOAD_CONCURRENCY }, worker));
+                return URL.createObjectURL(new Blob(blobs));
+            }
+
+            // Only worth preloading when we have a cache; otherwise the runner's own
+            // XHR (with its progress bar) does the job.
+            async function loadRunnerData() {
+                if (!(await openCache())) return null;
+                return (await getResponse("runner.data")).arrayBuffer();
+            }
+
+            async function warm(url) {
+                if (!(await openCache())) return;
+                const res = await getResponse(url);
+                if (res.body && !res.bodyUsed) res.body.cancel().catch(() => {});
+            }
+
+            window.ptClearCache = async function () {
+                const keys = await caches.keys();
+                for (const k of keys) if (k.startsWith(CACHE_PREFIX)) await caches.delete(k);
+                console.log("[cache] cleared:", keys.filter(k => k.startsWith(CACHE_PREFIX)));
+            };
+
+            // ---- boot ------------------------------------------------------------
+            function loadScript(src, onload) {
+                const s = document.createElement("script");
+                s.src = src;
+                if (onload) s.onload = onload;
+                document.body.appendChild(s);
+            }
+
+            (async () => {
+                try {
+                    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+                } catch (e) {}
+
+                let gameUnxUrl, runnerData;
+                try {
+                    [gameUnxUrl, runnerData] = await Promise.all([
+                        loadGameUnx(),
+                        loadRunnerData(),
+                        warm("runner.wasm"),
+                    ]);
+                } catch (error) {
+                    console.error("Failed to load game files:", error);
+                    if (statusEl) statusEl.textContent = "Failed to load game files, see console";
+                    return;
+                }
+                window.gameUnxUrl = gameUnxUrl;
+
+                // Point the runner at the merged game.unx, and serve runner.wasm from cache.
+                const wasmKey = absUrl("runner.wasm");
+                window.fetch = async function (...args) {
+                    let [url, options] = args;
+                    if (typeof url === "string" && url.includes("game.unx")) {
+                        console.log("fetch:", url);
+                        url = window.gameUnxUrl;
+                    } else if (url instanceof Request && url.url.includes("game.unx")) {
+                        console.log("fetch request:", url.url);
+                        url = new Request(window.gameUnxUrl, url);
+                    } else {
+                        const asString = typeof url === "string" ? url : (url instanceof Request ? url.url : String(url));
+                        if (absUrl(asString) === wasmKey) {
+                            try { return await getResponse("runner.wasm"); } catch (e) { /* fall through to network */ }
+                        }
+                    }
+                    return nativeFetch(url, options);
+                };
+
+                const originalOpen = XMLHttpRequest.prototype.open;
+                XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+                    if (String(url).includes("game.unx")) {
+                        console.log("XHR:", url);
+                        url = window.gameUnxUrl;
+                    }
+                    return originalOpen.call(this, method, url, ...rest);
+                };
+
+                // index.js defines `Module`, so hook runner.data in after it loads and
+                // only then start runner.js.
+                loadScript("index.js", () => {
+                    if (runnerData) {
+                        Module.getPreloadedPackage = function (name) {
+                            if (name === "runner.data") {
+                                const data = runnerData;
+                                runnerData = null; // let it be freed once consumed
+                                return data;
+                            }
+                            return null;
+                        };
+                    }
+                    loadScript("runner.js");
+                });
+            })();
+        })();
+        </script>
 </body>
 
 </html>
