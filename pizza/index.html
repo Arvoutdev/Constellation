@@ -72,6 +72,99 @@
                 }
             }
 
+            // ---- Mod: "=" key swaps the game's audio for lap.mp3 -----------------
+            // Press "=" : game audio goes silent and lap.mp3 plays from the start.
+            // Press "=" again : lap.mp3 stops and rewinds, game audio comes back.
+            // The song loops until you press "=" again.
+            //
+            // How the muting works: every time the game connects a Web Audio node to the
+            // speakers (ctx.destination), it is redirected through one master GainNode per
+            // AudioContext. Muting = setting that gain to 0. This must be installed before
+            // runner.js loads, which is why it runs immediately.
+            const LAP_URL = "lap.mp3"; // resolved against <base href>, so it is next to index.html
+
+            const masterGains = new Map(); // AudioContext -> GainNode
+            let gameVolume = 1;
+            const nativeConnect = AudioNode.prototype.connect;
+            const nativeDisconnect = AudioNode.prototype.disconnect;
+
+            function masterFor(ctx) {
+                let gain = masterGains.get(ctx);
+                if (!gain) {
+                    gain = ctx.createGain();
+                    gain.gain.value = gameVolume;
+                    nativeConnect.call(gain, ctx.destination);
+                    masterGains.set(ctx, gain);
+                }
+                return gain;
+            }
+            AudioNode.prototype.connect = function (dest, ...rest) {
+                if (dest instanceof AudioDestinationNode) {
+                    nativeConnect.call(this, masterFor(dest.context), ...rest);
+                    return dest;
+                }
+                return nativeConnect.call(this, dest, ...rest);
+            };
+            AudioNode.prototype.disconnect = function (dest, ...rest) {
+                if (dest instanceof AudioDestinationNode) {
+                    const gain = masterGains.get(dest.context);
+                    return gain ? nativeDisconnect.call(this, gain, ...rest) : undefined;
+                }
+                return nativeDisconnect.call(this, dest, ...rest);
+            };
+            function setGameVolume(v) {
+                gameVolume = v;
+                for (const gain of masterGains.values()) gain.gain.value = v;
+            }
+
+            // Preload the song: download it fully now so pressing "=" starts instantly.
+            // If the song can't be loaded or decoded, the key does nothing (game audio is
+            // never muted).
+            const lapAudio = new Audio();
+            lapAudio.preload = "auto";
+            lapAudio.loop = true;
+            let lapReady = false;
+            lapAudio.addEventListener("canplay", () => { lapReady = true; });
+            lapAudio.addEventListener("error", () => {
+                console.warn("[lap] " + LAP_URL + " could not be loaded/decoded; the = key is disabled");
+                lapReady = false;
+                if (lapOn) setLapMode(false);
+            });
+            (async () => {
+                try {
+                    const res = await nativeFetch(absUrl(LAP_URL));
+                    if (!res.ok) throw new Error("HTTP " + res.status);
+                    lapAudio.src = URL.createObjectURL(await res.blob());
+                    lapAudio.load();
+                    console.log("[lap] lap.mp3 preloaded");
+                } catch (e) {
+                    console.warn("[lap] could not load " + LAP_URL + "; the = key is disabled:", e);
+                }
+            })();
+
+            let lapOn = false;
+            function setLapMode(on) {
+                if (on && !lapReady) {
+                    console.warn("[lap] " + LAP_URL + " is not loaded, ignoring key");
+                    return;
+                }
+                lapOn = on;
+                setGameVolume(on ? 0 : 1);
+                if (on) {
+                    lapAudio.currentTime = 0;
+                    lapAudio.play().catch((e) => {
+                        console.warn("[lap] could not play " + LAP_URL + ":", e);
+                        setLapMode(false); // never leave the game muted with nothing playing
+                    });
+                } else {
+                    lapAudio.pause();
+                    lapAudio.currentTime = 0;
+                }
+            }
+            window.addEventListener("keydown", (e) => {
+                if ((e.code === "Equal" || e.key === "=") && !e.repeat) setLapMode(!lapOn);
+            });
+
             // ---- Cache Storage ---------------------------------------------------
             let cachePromise = null;
             function openCache() {
