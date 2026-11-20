@@ -75,7 +75,7 @@
             // ---- Mod: "=" and "-" keys swap the game's audio for a song ---------
             // Press "="       : game audio goes silent, lap.mp3 fades in over 1 second and loops.
             // Press "=" again : lap.mp3 stops and rewinds, game audio comes back.
-            // "-" does the same with lapnoise.mp3. Pressing the other key while a song is
+            // "-" does the same with lapnoise.mp3, but with no fade-in and no ding. Pressing the other key while a song is
             // playing switches to that song (game audio stays silent).
             // ding.mp3 plays whenever a song starts (not when it is stopped).
             // All three files are preloaded when the page opens.
@@ -153,6 +153,8 @@
             const lapClip = makeClip(LAP_URL, true);
             const lapNoiseClip = makeClip(LAPNOISE_URL, true);
             const dingClip = makeClip(DING_URL, false);
+            lapClip.fadeIn = true;  lapClip.ding = true;   // "=" : fades in, plays ding
+            lapNoiseClip.fadeIn = false; lapNoiseClip.ding = false; // "-" : starts instantly, no ding
 
             let activeClip = null; // the song currently playing, if any
             let fadeTimer = null;
@@ -171,9 +173,9 @@
             function startSong(clip) {
                 clearInterval(fadeTimer);
                 clip.audio.currentTime = 0;
-                clip.audio.volume = 0;
+                clip.audio.volume = clip.fadeIn ? 0 : 1;
                 clip.audio.play().then(() => {
-                    if (activeClip !== clip) return;
+                    if (activeClip !== clip || !clip.fadeIn) return;
                     const t0 = performance.now(); // fade starts when playback really begins
                     fadeTimer = setInterval(() => {
                         const f = Math.min(1, (performance.now() - t0) / FADE_IN_MS);
@@ -205,7 +207,7 @@
                 if (activeClip === clip) {
                     endLapMode(); // same key again: stop, rewind, game audio back (no ding)
                 } else {
-                    playDing(); // ding only when a song starts
+                    if (clip.ding) playDing(); // ding only when this song starts (not lapnoise)
                     if (activeClip) { // switching songs: stop the old one, stay muted
                         activeClip.audio.pause();
                         activeClip.audio.currentTime = 0;
