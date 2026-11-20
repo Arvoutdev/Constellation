@@ -72,16 +72,23 @@
                 }
             }
 
-            // ---- Mod: "=" key swaps the game's audio for lap.mp3 -----------------
-            // Press "=" : game audio goes silent and lap.mp3 plays from the start.
+            // ---- Mod: "=" and "-" keys swap the game's audio for a song ---------
+            // Press "="       : game audio goes silent, lap.mp3 fades in over 1 second and loops.
             // Press "=" again : lap.mp3 stops and rewinds, game audio comes back.
-            // The song loops until you press "=" again.
+            // "-" does the same with lapnoise.mp3. Pressing the other key while a song is
+            // playing switches to that song (game audio stays silent).
+            // Every key press that does something also plays ding.mp3.
+            // All three files are preloaded when the page opens.
             //
             // How the muting works: every time the game connects a Web Audio node to the
             // speakers (ctx.destination), it is redirected through one master GainNode per
             // AudioContext. Muting = setting that gain to 0. This must be installed before
             // runner.js loads, which is why it runs immediately.
-            const LAP_URL = "lap.mp3"; // resolved against <base href>, so it is next to index.html
+            // File names are resolved against <base href>, so they sit next to index.html.
+            const LAP_URL = "lap.mp3";           // "=" key
+            const LAPNOISE_URL = "lapnoise.mp3"; // "-" key
+            const DING_URL = "ding.mp3";         // plays on each key press
+            const FADE_IN_MS = 1000;             // song fade-in time
 
             const masterGains = new Map(); // AudioContext -> GainNode
             let gameVolume = 1;
@@ -117,52 +124,103 @@
                 for (const gain of masterGains.values()) gain.gain.value = v;
             }
 
-            // Preload the song: download it fully now so pressing "=" starts instantly.
-            // If the song can't be loaded or decoded, the key does nothing (game audio is
-            // never muted).
-            const lapAudio = new Audio();
-            lapAudio.preload = "auto";
-            lapAudio.loop = true;
-            let lapReady = false;
-            lapAudio.addEventListener("canplay", () => { lapReady = true; });
-            lapAudio.addEventListener("error", () => {
-                console.warn("[lap] " + LAP_URL + " could not be loaded/decoded; the = key is disabled");
-                lapReady = false;
-                if (lapOn) setLapMode(false);
-            });
-            (async () => {
-                try {
-                    const res = await nativeFetch(absUrl(LAP_URL));
-                    if (!res.ok) throw new Error("HTTP " + res.status);
-                    lapAudio.src = URL.createObjectURL(await res.blob());
-                    lapAudio.load();
-                    console.log("[lap] lap.mp3 preloaded");
-                } catch (e) {
-                    console.warn("[lap] could not load " + LAP_URL + "; the = key is disabled:", e);
-                }
-            })();
+            // Preload a sound: download it fully now so pressing a key plays instantly.
+            // If it can't be loaded or decoded, clip.ready stays false and it is never played.
+            function makeClip(url, loop) {
+                const clip = { url, ready: false, audio: new Audio(), onError: null };
+                const a = clip.audio;
+                a.preload = "auto";
+                a.loop = loop;
+                a.addEventListener("canplay", () => { clip.ready = true; });
+                a.addEventListener("error", () => {
+                    console.warn("[lap] " + url + " could not be loaded/decoded; it is disabled");
+                    clip.ready = false;
+                    if (clip.onError) clip.onError();
+                });
+                (async () => {
+                    try {
+                        const res = await nativeFetch(absUrl(url));
+                        if (!res.ok) throw new Error("HTTP " + res.status);
+                        a.src = URL.createObjectURL(await res.blob());
+                        a.load();
+                        console.log("[lap] " + url + " preloaded");
+                    } catch (e) {
+                        console.warn("[lap] could not load " + url + "; it is disabled:", e);
+                    }
+                })();
+                return clip;
+            }
+            const lapClip = makeClip(LAP_URL, true);
+            const lapNoiseClip = makeClip(LAPNOISE_URL, true);
+            const dingClip = makeClip(DING_URL, false);
 
-            let lapOn = false;
-            function setLapMode(on) {
-                if (on && !lapReady) {
-                    console.warn("[lap] " + LAP_URL + " is not loaded, ignoring key");
+            let activeClip = null; // the song currently playing, if any
+            let fadeTimer = null;
+
+            function endLapMode() { // stop whatever is playing and give the game its audio back
+                clearInterval(fadeTimer);
+                if (activeClip) {
+                    activeClip.audio.pause();
+                    activeClip.audio.currentTime = 0;
+                    activeClip.audio.volume = 1;
+                }
+                activeClip = null;
+                setGameVolume(1);
+            }
+
+            function startSong(clip) {
+                clearInterval(fadeTimer);
+                clip.audio.currentTime = 0;
+                clip.audio.volume = 0;
+                clip.audio.play().then(() => {
+                    if (activeClip !== clip) return;
+                    const t0 = performance.now(); // fade starts when playback really begins
+                    fadeTimer = setInterval(() => {
+                        const f = Math.min(1, (performance.now() - t0) / FADE_IN_MS);
+                        clip.audio.volume = f;
+                        if (f >= 1) clearInterval(fadeTimer);
+                    }, 30);
+                }).catch((e) => {
+                    console.warn("[lap] could not play " + clip.url + ":", e);
+                    if (activeClip === clip) endLapMode(); // never leave the game muted with nothing playing
+                });
+            }
+
+            // If a song breaks while it is playing, restore the game audio.
+            for (const clip of [lapClip, lapNoiseClip]) {
+                clip.onError = () => { if (activeClip === clip) endLapMode(); };
+            }
+
+            function playDing() {
+                if (!dingClip.ready) return;
+                dingClip.audio.currentTime = 0;
+                dingClip.audio.play().catch(() => {});
+            }
+
+            function pressSongKey(clip) {
+                if (!clip.ready) {
+                    console.warn("[lap] " + clip.url + " is not loaded, ignoring key");
                     return;
                 }
-                lapOn = on;
-                setGameVolume(on ? 0 : 1);
-                if (on) {
-                    lapAudio.currentTime = 0;
-                    lapAudio.play().catch((e) => {
-                        console.warn("[lap] could not play " + LAP_URL + ":", e);
-                        setLapMode(false); // never leave the game muted with nothing playing
-                    });
+                playDing();
+                if (activeClip === clip) {
+                    endLapMode(); // same key again: stop, rewind, game audio back
                 } else {
-                    lapAudio.pause();
-                    lapAudio.currentTime = 0;
+                    if (activeClip) { // switching songs: stop the old one, stay muted
+                        activeClip.audio.pause();
+                        activeClip.audio.currentTime = 0;
+                        activeClip.audio.volume = 1;
+                    }
+                    activeClip = clip;
+                    setGameVolume(0);
+                    startSong(clip);
                 }
             }
+
             window.addEventListener("keydown", (e) => {
-                if ((e.code === "Equal" || e.key === "=") && !e.repeat) setLapMode(!lapOn);
+                if (e.repeat) return;
+                if (e.code === "Equal" || e.key === "=") pressSongKey(lapClip);
+                else if (e.code === "Minus" || e.key === "-") pressSongKey(lapNoiseClip);
             });
 
             // ---- Cache Storage ---------------------------------------------------
