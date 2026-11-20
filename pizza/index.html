@@ -77,7 +77,7 @@
             // Press "=" again : lap.mp3 stops and rewinds, game audio comes back.
             // "-" does the same with lapnoise.mp3. Pressing the other key while a song is
             // playing switches to that song (game audio stays silent).
-            // Every key press that does something also plays ding.mp3.
+            // ding.mp3 plays whenever a song starts (not when it is stopped).
             // All three files are preloaded when the page opens.
             //
             // How the muting works: every time the game connects a Web Audio node to the
@@ -202,10 +202,10 @@
                     console.warn("[lap] " + clip.url + " is not loaded, ignoring key");
                     return;
                 }
-                playDing();
                 if (activeClip === clip) {
-                    endLapMode(); // same key again: stop, rewind, game audio back
+                    endLapMode(); // same key again: stop, rewind, game audio back (no ding)
                 } else {
+                    playDing(); // ding only when a song starts
                     if (activeClip) { // switching songs: stop the old one, stay muted
                         activeClip.audio.pause();
                         activeClip.audio.currentTime = 0;
