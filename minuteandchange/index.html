@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Do we have a minute and change?</title>
+<title>CS Change Clock</title>
 <style>
   html, body {
     margin: 0;
@@ -145,34 +145,76 @@
   </div>
 
 <script>
-  // Hard-coded checkpoint times as fixed UTC times (converted from America/New_York, EDT = UTC-4).
-  // This makes the countdown identical for every viewer regardless of local timezone or
-  // device clock misconfiguration relative to timezone.
-  // NOTE: EDT (UTC-4) is used because it is currently daylight saving time in New York.
-  // If this is still in use after New York switches to EST (UTC-5, around early Nov),
-  // these UTC hours need to shift by +1 to stay correct.
-  //   8:00 AM EDT -> 12:00 UTC ... 3:00 PM EDT -> 19:00 UTC
-  const dailyCheckpointsUTC = [
-    [11, 58],   // 8:00 AM EDT
-    [12, 47],  // 8:47 AM EDT
-    [13, 39],  // 9:39 AM EDT
-    [13, 49],  // 9:49 AM EDT
-    [14, 41],  // 10:41 AM EDT
-    [15, 33],  // 11:33 AM EDT
-    [16, 25],  // 12:25 PM EDT
-    [17, 16],  // 1:16 PM EDT
-    [18, 8],   // 2:08 PM EDT
-    [19, 0]    // 3:00 PM EDT
+  // Checkpoints are New York WALL-CLOCK times (they follow daylight saving automatically).
+  // Each checkpoint is converted to an absolute instant using the real America/New_York
+  // offset at that moment, so the countdown is identical for every viewer and stays correct
+  // through EDT (UTC-4) and EST (UTC-5).
+  const dailyCheckpointsNY = [
+    [8, 0],    // 8:00 AM
+    [8, 47],   // 8:47 AM
+    [9, 39],   // 9:39 AM
+    [9, 49],   // 9:49 AM
+    [10, 41],  // 10:41 AM
+    [11, 33],  // 11:33 AM
+    [12, 25],  // 12:25 PM
+    [13, 16],  // 1:16 PM
+    [14, 8],   // 2:08 PM
+    [15, 0]    // 3:00 PM
   ];
 
-  // Days are computed from UTC day-of-week to stay consistent with UTC times above.
-  const weekCheckpointsUTC = {
-    1: dailyCheckpointsUTC, // Monday
-    2: dailyCheckpointsUTC, // Tuesday
-    3: dailyCheckpointsUTC, // Wednesday
-    4: dailyCheckpointsUTC, // Thursday
-    5: dailyCheckpointsUTC  // Friday
+  // Keyed by New York weekday (0 = Sunday).
+  const weekCheckpointsNY = {
+    1: dailyCheckpointsNY, // Monday
+    2: dailyCheckpointsNY, // Tuesday
+    3: dailyCheckpointsNY, // Wednesday
+    4: dailyCheckpointsNY, // Thursday
+    5: dailyCheckpointsNY  // Friday
   };
+
+  const nyFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', hourCycle: 'h23', weekday: 'short',
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: 'numeric', second: 'numeric'
+  });
+  const WEEKDAY_INDEX = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+  // Wall-clock fields in New York for an absolute instant.
+  function getNYParts(date) {
+    const o = {};
+    for (const part of nyFormatter.formatToParts(date)) o[part.type] = part.value;
+    return {
+      year: +o.year, month: +o.month, day: +o.day,
+      hour: +o.hour % 24, minute: +o.minute, second: +o.second,
+      weekday: WEEKDAY_INDEX[o.weekday]
+    };
+  }
+
+  // New York UTC offset (ms, negative) in effect at an absolute instant.
+  function getNYOffsetMs(date) {
+    const p = getNYParts(date);
+    const asUTC = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+    return asUTC - Math.floor(date.getTime() / 1000) * 1000;
+  }
+
+  // Convert a New York wall-clock time to an absolute Date.
+  function nyWallClockToDate(year, month, day, hour, minute, second, ms) {
+    const wall = Date.UTC(year, month - 1, day, hour, minute, second, ms || 0);
+    let guess = wall - getNYOffsetMs(new Date(wall));
+    // Re-check once in case the guess crossed a DST boundary.
+    guess = wall - getNYOffsetMs(new Date(guess));
+    return new Date(guess);
+  }
+
+  // Milliseconds from `now` to the next checkpoint today (New York day), or null if none.
+  function getMsToNextCheckpoint(now) {
+    const ny = getNYParts(now);
+    const checkpoints = weekCheckpointsNY[ny.weekday] || [];
+    for (const [eh, em] of checkpoints) {
+      const target = nyWallClockToDate(ny.year, ny.month, ny.day, eh, em, 0, 0);
+      if (target > now) return target - now;
+    }
+    return null;
+  }
 
   function pad(n) {
     return n.toString().padStart(2, '0');
@@ -437,25 +479,11 @@
 
   function update() {
     const now = getNowUTC();
-    const day = now.getUTCDay();
     const statusEl = document.getElementById('status');
     const amountEl = document.getElementById('amount');
     const audioEl = document.getElementById('outroAudio');
 
-    const checkpoints = weekCheckpointsUTC[day] || [];
-
-    // Find the next checkpoint today (in UTC) that is still in the future.
-    let msRemaining = null;
-
-    for (const [eh, em] of checkpoints) {
-      const target = new Date(now);
-      target.setUTCHours(eh, em, 0, 0);
-
-      if (target > now) {
-        msRemaining = target - now;
-        break;
-      }
-    }
+    const msRemaining = getMsToNextCheckpoint(now);
 
     const haveTarget = msRemaining !== null;
     const secondsRemaining = haveTarget ? msRemaining / 1000 : null;
@@ -640,12 +668,13 @@
       return;
     }
 
-    // Build "today at that Eastern time" by working in UTC (EDT = UTC-4).
+    // Build "today at that Eastern time" using the real New York date and DST offset.
     const realNow = new Date();
-    const targetUTC = new Date(realNow);
+    const nyToday = getNYParts(realNow);
     const wholeSeconds = Math.floor(parsed.seconds);
     const fractionalMs = Math.round((parsed.seconds - wholeSeconds) * 1000);
-    targetUTC.setUTCHours(parsed.hours + 4, parsed.minutes, wholeSeconds, fractionalMs);
+    const targetUTC = nyWallClockToDate(nyToday.year, nyToday.month, nyToday.day,
+      parsed.hours, parsed.minutes, wholeSeconds, fractionalMs);
 
     debugOffsetMs = targetUTC - realNow;
     debugStatusEl.textContent = 'set to ' + debugTimeInput.value + ' ET';
@@ -661,17 +690,7 @@
     // Compute and log what the next update() tick will seek the audio to, given this new
     // simulated time, so it's easy to verify the seek target is correct after Apply.
     const newNow = getNowUTC();
-    const day = newNow.getUTCDay();
-    const checkpoints = weekCheckpointsUTC[day] || [];
-    let msRemaining = null;
-    for (const [eh, em] of checkpoints) {
-      const target = new Date(newNow);
-      target.setUTCHours(eh, em, 0, 0);
-      if (target > newNow) {
-        msRemaining = target - newNow;
-        break;
-      }
-    }
+    const msRemaining = getMsToNextCheckpoint(newNow);
     if (msRemaining !== null) {
       const secondsRemaining = msRemaining / 1000;
       if (secondsRemaining <= SONG_START_AT_REMAINING) {
